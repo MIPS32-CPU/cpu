@@ -117,7 +117,7 @@ module sram_control (
                                 
                     case(ramOp_i) 
                         `MEM_LB: begin
-                            loadData_o <= {{24{data_io[7]}}, data_io[7:0]};
+                            loadData_o <= {{24{data_io[31]}}, data_io[31:24]};
                         end
                         
                         `MEM_LBU: begin
@@ -125,7 +125,7 @@ module sram_control (
                         end
                                                 
                         `MEM_LH: begin
-                            loadData_o <= {{16{data_io[15]}}, data_io[15:0]};
+                            loadData_o <= {{16{data_io[31]}}, data_io[31:16]};
                         end
                         
                         `MEM_LHU: begin
@@ -168,11 +168,11 @@ module sram_control (
                         end
 
                         `MEM_SH: begin
-                            be_n_o <= 4'b1100;
+                            be_n_o <= 4'b0011;
                         end
 
                         `MEM_SB: begin
-                            be_n_o <= 4'b1110;
+                            be_n_o <= 4'b0111;
                         end
                         
                         default: begin
