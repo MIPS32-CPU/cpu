@@ -69,6 +69,13 @@ module div(
 				if(start_i == 1'b0) begin
 					nstate <= DIV_FREE;
 				end
+				else begin
+				    nstate <= DIV_FREE;
+				end
+			end
+			
+			default: begin
+			    nstate <= DIV_FREE;
 			end
 		endcase
 	end
@@ -134,6 +141,11 @@ module div(
 					result_o <= {dividend[64:33], dividend[31:0]};
 					success_o <= 1'b1;
 				end
+				
+				default: begin
+				    result_o <= 64'b0;
+                    success_o <= 1'b0;
+                end
 			endcase	
 		end	
 	end			
