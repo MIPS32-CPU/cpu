@@ -63,7 +63,7 @@ module EX(
             //ovassert <= 1'b0;
             write_CP0_o <= 1'b0;
             write_CP0_addr_o <= 5'b0;
-            temp <= 32'b0;
+            temp  <= 33'b0;
             pauseRequest <= 1'b0;
             
             

@@ -138,6 +138,11 @@ module div(
 					result_o <= {dividend[64:33], dividend[31:0]};
 					success_o <= 1'b1;
 				end
+				
+				default: begin
+				    result_o <= 64'b0;
+                    success_o <= 1'b0;
+                end
 			endcase	
 		end	
 	end			
