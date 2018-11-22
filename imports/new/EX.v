@@ -46,6 +46,7 @@ module EX(
 					  (ALUop_i == `ALU_SUB) && (signed_i == 1'b1) && (oprand1_i[31] ^ LO_data_o[31]) && (oprand1_i[31] ^ oprand2_i[31]); 
 
     always @ (*) begin
+        temp <= {1'b0, oprand1_i} - {1'b0, oprand2_i};
         if(rst == 1'b1) begin
             writeAddr_o <= 5'b0;
             writeEnable_o <= 1'b0;
@@ -63,7 +64,6 @@ module EX(
             //ovassert <= 1'b0;
             write_CP0_o <= 1'b0;
             write_CP0_addr_o <= 5'b0;
-            temp  <= 33'b0;
             pauseRequest <= 1'b0;
             
             
@@ -147,7 +147,6 @@ module EX(
 							LO_data_o <= (oprand1_i < oprand2_i);
 						end
 					end else begin
-						temp <= {1'b0, oprand1_i} - {1'b0, oprand2_i};
 						LO_data_o <= temp[32];
 					end
 
@@ -224,7 +223,6 @@ module EX(
                	
                 default: begin
                     pauseRequest <= 1'b0;
-                    temp <= 32'b0;
                 end
             endcase
         end
