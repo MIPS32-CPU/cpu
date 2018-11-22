@@ -13,6 +13,8 @@ module HILO(
 	 
 	//read HILO regisers
 	always @(*) begin
+	    HI_data_o <= 32'b0;
+        LO_data_o <= 32'b0;
 		if(rst == 1'b1) begin
 			HI_data_o <= 32'b0;
 			LO_data_o <= 32'b0;

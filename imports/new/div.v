@@ -70,6 +70,10 @@ module div(
 					nstate <= DIV_FREE;
 				end
 			end
+			
+			default: begin
+			    nstate <= DIV_FREE;
+			end
 		endcase
 	end
 	
