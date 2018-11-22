@@ -28,7 +28,8 @@ module sram_control (
 			  READEND = 3'b11,
 			  WRITEEND = 3'b100,
 			  WRITE2 = 3'b101,
-			  WRITE3  = 3'b110;
+			  WRITE3 = 3'b110,
+			  WRITE4 = 3'b111;
 			  
 	always @(posedge clk50 or posedge rst) begin
 		if(rst == 1'b1) begin
@@ -41,6 +42,7 @@ module sram_control (
     always @(*) begin
         data_io_reg <= storeData_i;
     	if(rst == 1'b1 || ramOp_i == 4'b0) begin
+    	    write <=  1'b0;
 			WE_n_o <= 1'b1;
 			CE_n_o <= 1'b1;
 			OE_n_o <= 1'b1;
@@ -50,7 +52,7 @@ module sram_control (
 			success_o <= 1'b0;
 			nstate <= IDLE;
 		end else begin
-			
+			ramAddr_o <= ramAddr_i;
 			case(state) 
 				IDLE: begin
 				    write  <= 1'b0;
@@ -59,7 +61,6 @@ module sram_control (
 					CE_n_o <= 1'b1;
 					be_n_o <= 4'b1111;
 					loadData_o <= 32'b0;
-					ramAddr_o <= ramAddr_i;
 					success_o <= 1'b0;
 					
 					case(ramOp_i) 
@@ -101,10 +102,13 @@ module sram_control (
 				end
 				
 				READ: begin
+				    write <= 1'b0;
+				    WE_n_o <= 1'b1;
 					CE_n_o <= 1'b0;
 					OE_n_o <= 1'b0;
 					be_n_o <= 4'b0;
-					
+					loadData_o <= 32'b0;
+					success_o <= 1'b0;
 					nstate <= READEND;
 					
 				end
@@ -133,23 +137,30 @@ module sram_control (
                         end
                     endcase
                 
-                    success_o <= 1'b1;
+                    write <= 1'b0;
+                    WE_n_o <= 1'b1;
                     CE_n_o <= 1'b1;
                     OE_n_o <= 1'b1;
                     be_n_o <= 4'b1111;
+                    success_o <= 1'b1;
                     nstate <= IDLE;
                 
                 end
 				
 				WRITE: begin
+				    write <= 1'b0;
 				    OE_n_o <= 1'b0;
 					CE_n_o <= 1'b0;
 					WE_n_o <= 1'b1;
 					be_n_o <= 4'b1111;
+					loadData_o <= 32'b0;
+					success_o <= 1'b0;
 					nstate <= WRITE2;
 				end
 				
 				WRITE2: begin
+				    OE_n_o <= 1'b0;
+                    CE_n_o <= 1'b0;
 				    WE_n_o <= 1'b0;
 				    case(ramOp_i)
                         `MEM_SW: begin
@@ -163,23 +174,36 @@ module sram_control (
                         `MEM_SB: begin
                             be_n_o <= 4'b1110;
                         end
+                        
+                        default: begin
+                            be_n_o <=4'b0;
+                        end
                     endcase
                     
                     write <= 1'b1;
+                    loadData_o <= 32'b0;
+                    success_o <= 1'b0;
                                     
 				    nstate <= WRITE3;
 				end
 				
 				WRITE3: begin
+				    OE_n_o <= 1'b0;
+                    CE_n_o <= 1'b0;
 				    WE_n_o <= 1'b1;
 				    be_n_o <= 4'b1111;
+				    loadData_o <= 32'b0;
+                    success_o <= 1'b0;
 				    nstate <= WRITEEND;
 				end
 				
 				WRITEEND: begin
 					success_o <= 1'b1;
+					WE_n_o <= 1'b1;
 					OE_n_o <= 1'b1;
                     CE_n_o <= 1'b1;
+                    be_n_o <= 4'b1111;
+                    loadData_o <= 32'b0;
 					write <= 1'b0;
 					nstate <= IDLE;
 				end
@@ -193,6 +217,7 @@ module sram_control (
                     loadData_o <= 32'b0;
                     ramAddr_o <= ramAddr_i;
                     success_o <= 1'b0;
+                    nstate <= IDLE;
 				end
 			
 			endcase
