@@ -188,6 +188,7 @@ module sram_control (
 				end
 				
 				WRITE3: begin
+				    write <= 1'b1;
 				    OE_n_o <= 1'b0;
                     CE_n_o <= 1'b0;
 				    WE_n_o <= 1'b1;

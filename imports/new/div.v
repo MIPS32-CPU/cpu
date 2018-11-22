@@ -69,6 +69,9 @@ module div(
 				if(start_i == 1'b0) begin
 					nstate <= DIV_FREE;
 				end
+				else begin
+				    nstate <= DIV_FREE;
+				end
 			end
 			
 			default: begin
