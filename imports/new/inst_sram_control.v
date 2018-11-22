@@ -22,8 +22,8 @@ module inst_sram_control (
     always @(*) begin
     	if(rst == 1'b1) begin
 			WE_n_o <= 1'b1;
-			CE_n_o <= 1'b0;
-			OE_n_o <= 1'b0;
+			CE_n_o <= 1'b1;
+			OE_n_o <= 1'b1;
 			be_n_o <= 4'b0;
 			ramAddr_o <= 20'b0;
 			loadData_o <= 32'b0;
