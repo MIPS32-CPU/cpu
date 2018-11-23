@@ -169,7 +169,7 @@ module MEM(
             write_CP0_o <= write_CP0_i;
             write_CP0_addr_o <= write_CP0_addr_i;
             
-            //pauseRequest <= 1'b0;
+            
             if(ramOp_i == `MEM_NOP) begin
             	pauseRequest <= 1'b0;
             end else if(success_i == 1'b0) begin

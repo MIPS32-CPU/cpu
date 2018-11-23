@@ -1,11 +1,12 @@
 `include<defines.v>
 
 module sram_control (
-	input wire clk50,
+	input wire clk,
 	input wire rst,
 	input wire [19:0] ramAddr_i,
 	input wire [31:0] storeData_i,
 	input wire [3:0] ramOp_i,
+	input wire [1:0] bytes_i,
 	
 	output reg [31:0] loadData_o,
 	output reg WE_n_o,
@@ -17,10 +18,11 @@ module sram_control (
 	
 	inout wire [31:0] data_io
 );	
-	reg [31:0] data_io_reg;
+	
 	reg [2:0] state, nstate;
-	reg write;
-	assign data_io = write  ? data_io_reg : 32'bz;
+	//wire write;
+	assign data_io = (ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz));
+	//assign write = (ramOp_i == `MEM_SW || ramOp_i == `MEM_SH || ramOp_i == `MEM_SB) ? 1'b1 : 1'b0;
 	
 	parameter IDLE = 3'b00,
 			  WRITE = 3'b10,
@@ -29,7 +31,7 @@ module sram_control (
 			  WRITE2 = 3'b101,
 			  WRITE3 = 3'b110;
 			  
-	always @(posedge clk50 or posedge rst) begin
+	always @(posedge clk or posedge rst) begin
 		if(rst == 1'b1) begin
 			state <= IDLE;
 		end else begin
@@ -38,9 +40,7 @@ module sram_control (
 	end
 		
     always @(*) begin
-        data_io_reg <= storeData_i;
     	if(rst == 1'b1 || ramOp_i == 4'b0) begin
-    	    write <=  1'b0;
 			WE_n_o <= 1'b1;
 			CE_n_o <= 1'b1;
 			OE_n_o <= 1'b1;
@@ -55,7 +55,6 @@ module sram_control (
             CE_n_o <= 1'b0;
 			case(state) 
 				IDLE: begin
-				    write  <= 1'b0;
 					WE_n_o <= 1'b1;
 					be_n_o <= 4'b0000;
 					loadData_o <= 32'b0;
@@ -104,32 +103,53 @@ module sram_control (
                                 
                     case(ramOp_i) 
                         `MEM_LB: begin
-                            loadData_o <= {{24{data_io[31]}}, data_io[31:24]};
+                        	if(bytes_i == 2'b00) begin
+                            	loadData_o <= {{24{data_io[7]}}, data_io[7:0]};
+                            end else if(bytes_i == 2'b01) begin
+                            	loadData_o <= {{24{data_io[15]}}, data_io[15:8]};
+                            end else if(bytes_i == 2'b10) begin
+                            	loadData_o <= {{24{data_io[23]}}, data_io[23:16]};
+                            end else begin
+                            	loadData_o <= {{24{data_io[31]}}, data_io[31:24]};
+                            end
                         end
                         
                         `MEM_LBU: begin
-                            loadData_o <= {24'b0, data_io[31:24]};
+                            if(bytes_i == 2'b00) begin
+								loadData_o <= {24'b0, data_io[7:0]};
+							end else if(bytes_i == 2'b01) begin
+								loadData_o <= {24'b0, data_io[15:8]};
+							end else if(bytes_i == 2'b10) begin
+								loadData_o <= {24'b0, data_io[23:16]};
+							end else begin
+								loadData_o <= {24'b0, data_io[31:24]};
+							end
                         end
                                                 
                         `MEM_LH: begin
-                            loadData_o <= {{16{data_io[31]}}, data_io[31:16]};
+                        	if(bytes_i == 2'b00) begin
+                            	loadData_o <= {{16{data_io[15]}}, data_io[15:0]};
+                            end else begin
+                            	loadData_o <= {{16{data_io[31]}}, data_io[31:16]};
+                            end
                         end
                         
                         `MEM_LHU: begin
-                            loadData_o <= {16'b0, data_io[31:16]};
+                            if(bytes_i == 2'b00) begin
+								loadData_o <= {16'b0, data_io[15:0]};
+							end else begin
+								loadData_o <= {16'b0, data_io[31:16]};
+							end
                         end
                         
                         default: begin
                             loadData_o <= data_io;
                         end
                     endcase
-                
-                    write <= 1'b0;
                     WE_n_o <= 1'b1;
                     be_n_o <= 4'b0000;
                     success_o <= 1'b1;
                     nstate <= IDLE;
-                
                 end
 				
 				
@@ -137,50 +157,61 @@ module sram_control (
 				    WE_n_o <= 1'b0;
 				    case(ramOp_i)
                         `MEM_SW: begin
-                            be_n_o <= 4'b0;
+                            be_n_o <= 4'b0000;
                         end
 
                         `MEM_SH: begin
-                            be_n_o <= 4'b0011;
+                        	if(bytes_i == 2'b00) begin
+                            	be_n_o <= 4'b1100;
+                            end else if(bytes_i == 2'b10) begin
+                            	be_n_o <= 4'b0011;
+                            end else begin
+                            	be_n_o <= 4'b1111;
+                            end
                         end
 
                         `MEM_SB: begin
-                            be_n_o <= 4'b0111;
+                        	if(bytes_i == 2'b00) begin
+                            	be_n_o <= 4'b1110;
+                            end else if(bytes_i == 2'b01) begin
+                            	be_n_o <= 4'b1101;
+                            end else if(bytes_i == 2'b10) begin
+                            	be_n_o <= 4'b1011;
+                            end else begin
+                            	be_n_o <= 4'b0111;
+                            end
                         end
                         
                         default: begin
-                            be_n_o <=4'b0;
+                            be_n_o <= 4'b1111;
                         end
                     endcase
-                    
-                    write <= 1'b1;
                     loadData_o <= 32'b0;
                     success_o <= 1'b0;
 				    nstate <= WRITE2;
 				end
 				
 				WRITE2: begin
-				    write <= 1'b1;
 				    WE_n_o <= 1'b1;
 				    be_n_o <= 4'b1111;
 				    loadData_o <= 32'b0;
-                    success_o <= 1'b0;
-				    nstate <= WRITEEND;
+                    success_o <= 1'b1;
+				    nstate <= IDLE;
 				end
 				
 				WRITEEND: begin
 					success_o <= 1'b1;
 					WE_n_o <= 1'b1;
-                    be_n_o <= 4'b0000;
+                    be_n_o <= 4'b1111;
                     loadData_o <= 32'b0;
-					write <= 1'b0;
+					
 					nstate <= IDLE;
 				end
 				
 				default: begin
-				    write  <= 1'b0;
+				    
 				    WE_n_o <= 1'b1;
-                    be_n_o <= 4'b0000;
+                    be_n_o <= 4'b1111;
                     loadData_o <= 32'b0;
                     success_o <= 1'b0;
                     nstate <= IDLE;

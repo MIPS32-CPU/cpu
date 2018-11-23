@@ -9,13 +9,16 @@ module MMU(
 	input wire [31:0] storeData_i,
 	input wire [31:0] load_data_i,
 	input wire [31:0] load_inst_i,
+	input wire success_i,
 	
 	output reg [3:0] ramOp_o,
 	output reg [31:0] load_data_o,
 	output reg [31:0] load_inst_o,
 	output reg [31:0] storeData_o,
 	output reg [19:0] instAddr_o,
-	output reg [19:0] dataAddr_o
+	output reg [19:0] dataAddr_o,
+	output reg success_o,
+	output reg [1:0] bytes_o
 );
 	always @(*) begin 
 		if(rst == 1'b1) begin
@@ -25,6 +28,8 @@ module MMU(
 			storeData_o <= 32'b0;
 			instAddr_o <= 20'b0;
 			dataAddr_o <= 20'b0;
+			success_o <= 1'b0;
+			bytes_o <= 2'b0;
 		end else begin
 			ramOp_o <= ramOp_i;
 			load_data_o <= load_data_i;
@@ -33,6 +38,8 @@ module MMU(
 			storeData_o <= storeData_i;
 			instAddr_o <= inst_ramAddr_i[21:2];
 			dataAddr_o <= data_ramAddr_i[21:2];
+			success_o <= success_i;
+			bytes_o <= data_ramAddr_i[1:0];
 		end
 	end
 endmodule

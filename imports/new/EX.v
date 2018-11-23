@@ -215,11 +215,7 @@ module EX(
 				`ALU_LHU: begin
 					LO_data_o <= oprand1_i + oprand2_i;
 					ramOp_o <= `MEM_LHU;
-				end	
-				
-				`ALU_BAJ: begin
-					LO_data_o <= oprand2_i;
-               	end
+				end
                	
                 default: begin
                     pauseRequest <= 1'b0;

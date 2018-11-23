@@ -154,7 +154,8 @@ module CPU(
     wire [31:0] MMU_load_data_o, MMU_load_inst_o, MMU_storeData_o;
     wire [3:0] MMU_ramOp_o;
     wire [19:0] MMU_instAddr_o, MMU_dataAddr_o;
-    
+    wire MMU_success_o;
+    wire [1:0] MMU_bytes_o;
     
     assign inst_CE_n_o = base_CE_n_o,  inst_WE_n_o = base_WE_n_o, 
     	   inst_OE_n_o = base_OE_n_o;
@@ -401,7 +402,7 @@ module CPU(
 	        .ramOp_o(MEM_ramOp_o),
 	        .ramAddr_o(MEM_ramAddr_o),				
 	        .load_data_i(MMU_load_data_o),
-	        .success_i(ext_success_o),				
+	        .success_i(MMU_success_o),				
 	        .pauseRequest(MEM_pause_o),
 	        .in_delay_slot_i(EX_MEM_in_delay_slot_o),
 	       	.in_delay_slot_o(MEM_in_delay_slot_o),
@@ -506,12 +507,13 @@ module CPU(
 	    );
 	    
 	    sram_control sram_control0(
-	    	.clk50(clk),							
+	    	.clk(clk),							
 	    	.rst(rst),
 	    	.ramAddr_i(MMU_dataAddr_o),				
 	    	.storeData_i(MMU_storeData_o),
 	    	.ramOp_i(MMU_ramOp_o),					
-	    	.loadData_o(MMU_load_data_o),
+	    	.loadData_o(ext_load_data_o),
+	    	.bytes_i(MMU_bytes_o),
 	    	.CE_n_o(ext_CE_n_o),					
 	    	.WE_n_o(ext_WE_n_o),						
 	    	.OE_n_o(ext_OE_n_o),					
@@ -522,6 +524,7 @@ module CPU(
 	    );
 	    
 	    MMU MMU0(
+	    	.clk(clk),
 	    	.rst(rst),
 	    	.data_ramAddr_i(MEM_ramAddr_o),
 	    	.inst_ramAddr_i(pc_pc_o),
@@ -529,13 +532,16 @@ module CPU(
 	    	.storeData_i(MEM_storeData_o),
 	    	.load_data_i(ext_load_data_o),
 	    	.load_inst_i(base_load_data_o),
+	    	.success_i(ext_success_o),
 	    	
 	    	.ramOp_o(MMU_ramOp_o),
 	    	.load_data_o(MMU_load_data_o),
 	    	.load_inst_o(MMU_load_inst_o),
 	    	.storeData_o(MMU_storeData_o),
 	    	.instAddr_o(MMU_instAddr_o),
-	    	.dataAddr_o(MMU_dataAddr_o)
+	    	.dataAddr_o(MMU_dataAddr_o),
+	    	.success_o(MMU_success_o),
+	    	.bytes_o(MMU_bytes_o)
 	    );
 	    
 	    inst_sram_control inst_sram_control0(
