@@ -116,8 +116,29 @@
 `define MEM_LW					4'b1000
 
 //**************CP0 Registers****************
+`define INDEX					5'b00000
+`define RANDOM					5'b00001
+`define ENTRYLO0				5'b00010
+`define ENTRYLO1				5'b00011
+`define CONTEXT					5'b00100
+`define PAGEMASK				5'b00101
+`define BADVADDR				5'b01000
+`define ENTRYHI					5'b01010
+`define STATUS 					5'b01100
 `define CAUSE  					5'b01101
 `define EPC						5'b01110
-`define STATUS 					5'b01100
-`define BADVADDR				5'b01000
 `define EBASE					5'b01111
+`define CONFIG					5'b10000
+
+//***************tlb entries defines****************
+`define VPN2 					83:65
+`define G	 					64
+`define ASID 					63:56
+`define PFN0 					55:33
+`define C0	 					32:30
+`define D0 	 					29
+`define V0 	 					28
+`define PFN1 					27:5
+`define C1	 					4:2
+`define D1 	 					1
+`define V1 	 					0

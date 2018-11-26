@@ -93,7 +93,9 @@ module ID(
 	reg eret;
 	reg instInvalid;
 	reg break;
-	assign exceptionType_o = {exceptionType_i[31:13], eret, 1'b0, break, instInvalid, syscall, 8'b0};
+	reg tlbwi;
+	reg tlbwr;
+	assign exceptionType_o = {exceptionType_i[31:15], tlbwr, tlbwi, eret, 1'b0, break, instInvalid, syscall, 8'b0};
     
     //get the stall request 
     assign load_conflict = (EX_ramOp_i == `MEM_LW) || 
@@ -201,6 +203,8 @@ module ID(
 			eret <= 1'b0;
 			instInvalid <= 1'b0;
 			break <= 1'b0;
+			tlbwi <= 1'b0;
+			tlbwr <= 1'b0;
 			write_CP0_o <= 1'b0;
 			write_CP0_addr_o <= 5'b0;
 			read_CP0_addr_o <= 4'b0;
@@ -227,6 +231,8 @@ module ID(
 			eret <= 1'b0;
 			break <= 1'b0;
 			instInvalid <= 1'b1;
+			tlbwi <= 1'b0;
+			tlbwr <= 1'b0;
 			write_CP0_o <= 1'b0;
 			write_CP0_addr_o <= 5'b0;	
 			read_CP0_addr_o <= 4'b0;
@@ -923,6 +929,14 @@ module ID(
 							eret <= 1'b1;
 							instInvalid <= 1'b0;
 						end
+					end else if(inst_i[25] == 1'b1 && inst_i[24:6] == 19'b0 &&
+								inst_func == `FUNC_TLBWI) begin
+							tlbwi <= 1'b1;
+							instInvalid <= 1'b0;
+					end else if(inst_i[25] == 1'b1 && inst_i[24:6] == 19'b0 &&
+								inst_func == `FUNC_TLBWR) begin
+							tlbwr <= 1'b1;
+							instInvalid <= 1'b0;
 					end else begin
 						instInvalid <= 1'b1;
 					end

@@ -8,6 +8,7 @@ module control(
 	input wire [31:0] exceptionType_i,
 	input wire [31:0] CP0_epc_i,
 	input wire [31:0] CP0_ebase_i,
+	input wire tlbmiss_i,
 	/*stall[0] pc stall
 	stall[1] IF stall
 	stall[2] ID stall
@@ -24,6 +25,10 @@ module control(
 			stall <= 6'b0;
 			flush <= 1'b0;
 			exceptionHandleAddr_o <= 32'h80000000;
+		end else if(tlbmiss_i == 1'b1) begin
+			stall <= 6'b0;
+			flush <= 1'b1;
+			exceptionHandleAddr_o <= CP0_ebase_i;
 		end else if(exceptionType_i != 32'b0) begin
 			stall <= 6'b0;
 			flush <= 1'b1;

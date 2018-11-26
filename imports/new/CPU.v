@@ -115,8 +115,8 @@ module CPU(
     wire [31:0] MEM_exceptionType_o;
     wire MEM_in_delay_slot_o;
     wire [31:0] MEM_pc_o;
-    wire [31:0] MEM_CP0_epc_o;
-    wire [31:0] MEM_CP0_ebase_o;
+    wire [31:0] MEM_CP0_epc_o, MEM_CP0_ebase_o, MEM_CP0_index_o, MEM_CP0_random_o, MEM_CP0_entrylo0_o, MEM_CP0_entrylo1_o, MEM_CP0_entryhi_o;
+    wire MEM_tlbwi_o, MEM_tlbwr_o;
      
     //link MEM/WB and registers
     wire [31:0] MEM_WB_HI_data_o, MEM_WB_LO_data_o;
@@ -132,7 +132,8 @@ module CPU(
     wire [31:0] ctr_exceptionHandleAddr_o;
 
     //CP0 register
-    wire [31:0] CP0_readData_o, CP0_status_o, CP0_epc_o, CP0_cause_o, CP0_ebase_o;
+    wire [31:0] CP0_readData_o, CP0_status_o, CP0_epc_o, CP0_cause_o, CP0_ebase_o, CP0_index_o, CP0_random_o, CP0_entrylo0_o, 
+    CP0_entrylo1_o, CP0_entryhi_o, CP0_badVaddr_o;
 
     //div module
     wire [63:0] DIV_result_o;
@@ -156,6 +157,7 @@ module CPU(
     wire [19:0] MMU_instAddr_o, MMU_dataAddr_o;
     wire MMU_success_o;
     wire [1:0] MMU_bytes_o;
+    wire MMU_tlbmiss_o, MMU_load_o;
     
     assign inst_CE_n_o = base_CE_n_o,  inst_WE_n_o = base_WE_n_o, 
     	   inst_OE_n_o = base_OE_n_o;
@@ -196,8 +198,6 @@ module CPU(
 	        .pc_o(IF_ID_pc_o),                      
 	        .inst_o(IF_ID_inst_o),
 	        .exceptionType_o(IF_ID_exceptionType_o)
-	        
-	        
 	    );
 	    
 	    
@@ -422,7 +422,19 @@ module CPU(
 			.CP0_ebase_o(MEM_CP0_ebase_o),
 			.WB_write_CP0_i(MEM_WB_write_CP0_o),
 			.WB_write_CP0_addr_i(MEM_WB_write_CP0_addr_o),
-			.WB_write_CP0_data_i(MEM_WB_LO_data_o)
+			.WB_write_CP0_data_i(MEM_WB_LO_data_o),
+			.CP0_index_i(CP0_index_o),
+			.CP0_random_i(CP0_random_o),
+			.CP0_entrylo0_i(CP0_entrylo0_o),
+			.CP0_entrylo1_i(CP0_entrylo1_o),
+			.CP0_entryhi_i(CP0_entryhi_o),
+			.CP0_index_o(MEM_CP0_index_o),
+			.CP0_random_o(MEM_CP0_random_o),
+			.CP0_entrylo0_o(MEM_CP0_entrylo0_o),
+			.CP0_entrylo1_o(MEM_CP0_entrylo1_o),
+			.CP0_entryhi_o(MEM_CP0_entryhi_o),
+			.tlbwi(MEM_tlbwi_o),
+			.tlbwr(MEM_tlbwr_o)
 	    );
 	    
 	
@@ -471,7 +483,8 @@ module CPU(
 	    	.CP0_epc_i(MEM_CP0_epc_o),
 	    	.flush(ctr_flush_o),
 	    	.exceptionHandleAddr_o(ctr_exceptionHandleAddr_o),
-	    	.stall_from_pc(pc_pause_o)
+	    	.stall_from_pc(pc_pause_o),
+	    	.tlbmiss_i(MMU_tlbmiss_o)
 	    );
 	    
 	    CP0 CP0_0(
@@ -491,7 +504,15 @@ module CPU(
 			.status_o(CP0_status_o),
 			.epc_o(CP0_epc_o),
 			.cause_o(CP0_cause_o),
-			.ebase_o(CP0_ebase_o)
+			.ebase_o(CP0_ebase_o),
+			.tlbmiss_i(MMU_tlbmiss_o),
+			.load_i(MMU_load_o),
+			.index_o(CP0_index_o),
+			.random_o(CP0_random_o),
+			.entrylo0_o(CP0_entrylo0_o),
+			.entrylo1_o(CP0_entrylo1_o),
+			.entryhi_o(CP0_entryhi_o),
+			.badVaddr_o(CP0_badVaddr_o)
 		);
 	
 	    div div0(
@@ -541,7 +562,16 @@ module CPU(
 	    	.instAddr_o(MMU_instAddr_o),
 	    	.dataAddr_o(MMU_dataAddr_o),
 	    	.success_o(MMU_success_o),
-	    	.bytes_o(MMU_bytes_o)
+	    	.bytes_o(MMU_bytes_o),
+	    	.index_i(MEM_CP0_index_o),
+	    	.random_i(MEM_CP0_random_o),
+	    	.entrylo0_i(MEM_CP0_entrylo0_o),
+	    	.entrylo1_i(MEM_CP0_entrylo1_o),
+	    	.entryhi_i(MEM_CP0_entryhi_o),
+	    	.tlbwi(MEM_tlbwi_o),
+	    	.tlbwr(MEM_tlbwr_o),
+	    	.tlbmiss(MMU_tlbmiss_o),
+	    	.load_o(MMU_load_o)
 	    );
 	    
 	    inst_sram_control inst_sram_control0(
