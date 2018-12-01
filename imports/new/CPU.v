@@ -7,6 +7,9 @@ In fact, one wire can link two ends.
 module CPU(
     input wire clk,
     input wire rst,
+    input wire tbre,
+    input wire tsre,
+    input wire data_ready,
     
     output wire [19:0] instAddr_o,
 	output wire [19:0] dataAddr_o,
@@ -24,6 +27,9 @@ module CPU(
 	output wire [15:0] led_o,
 	output wire [3:0] dpy0_o,
 	output wire [3:0] dpy1_o,
+	
+	output wire rdn,
+	output wire wrn,
 	
 	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
@@ -139,25 +145,35 @@ module CPU(
     wire [63:0] DIV_result_o;
     wire DIV_success_o;
     
-    //inst_sram control
+    //sram control
     wire [31:0] base_load_data_o; 
     wire [19:0] base_ramAddr_o;
     wire base_CE_n_o, base_WE_n_o, base_OE_n_o;
     wire [3:0] base_be_n_o;
-    
-    //data_sram control
 	wire [31:0] ext_load_data_o; 
 	wire [19:0] ext_ramAddr_o;
-	wire ext_success_o, ext_CE_n_o, ext_WE_n_o, ext_OE_n_o;
+	wire ext_CE_n_o, ext_WE_n_o, ext_OE_n_o;
 	wire [3:0] ext_be_n_o;
+	wire sram_pause_o;
+	wire [31:0] sram_data_o;
     
     //MMU
     wire [31:0] MMU_load_data_o, MMU_load_inst_o, MMU_storeData_o;
     wire [3:0] MMU_ramOp_o;
     wire [19:0] MMU_instAddr_o, MMU_dataAddr_o;
-    wire MMU_success_o;
     wire [1:0] MMU_bytes_o;
-    wire MMU_tlbmiss_o, MMU_load_o;
+    wire MMU_tlbmiss_o, MMU_load_o, MMU_EX_tlbmiss_o;
+    wire MMU_uartOp_o;
+    wire [31:0] MMU_uart_storeData_o;
+    
+    //uart control
+    wire rdn_o, wrn_o;
+	wire [31:0] uart_loadData_o;
+	wire uart_pause_o;
+	wire [31:0] uart_data_o;
+    
+    wire mem_pause_o;
+    assign mem_pause_o = uart_pause_o || sram_pause_o;	
     
     assign inst_CE_n_o = base_CE_n_o,  inst_WE_n_o = base_WE_n_o, 
     	   inst_OE_n_o = base_OE_n_o;
@@ -402,8 +418,6 @@ module CPU(
 	        .ramOp_o(MEM_ramOp_o),
 	        .ramAddr_o(MEM_ramAddr_o),				
 	        .load_data_i(MMU_load_data_o),
-	        .success_i(MMU_success_o),				
-	        .pauseRequest(MEM_pause_o),
 	        .in_delay_slot_i(EX_MEM_in_delay_slot_o),
 	       	.in_delay_slot_o(MEM_in_delay_slot_o),
 	       	.exceptionType_i(EX_MEM_exceptionType_o),
@@ -477,7 +491,7 @@ module CPU(
 	    	.stall_from_exe(EX_pause_o),
 	    	.stall(ctr_stall_o),					
 	    	.stall_from_id(ID_pause_o),
-	    	.stall_from_mem(MEM_pause_o),
+	    	.stall_from_mem(mem_pause_o),
 	    	.exceptionType_i(MEM_exceptionType_o),
 	    	.CP0_ebase_i(MEM_CP0_ebase_o),
 	    	.CP0_epc_i(MEM_CP0_epc_o),
@@ -498,7 +512,7 @@ module CPU(
 			.exceptionAddr_i(MEM_pc_o),
 			.exceptionType_i(MEM_exceptionType_o),
 			.in_delay_slot_i(MEM_in_delay_slot_o),
-			.badVaddr_i(MEM_LO_data_o),
+			.badVaddr_i(EX_MEM_LO_data_o),
 	
 			.readData_o(CP0_readData_o),
 			.status_o(CP0_status_o),
@@ -530,18 +544,30 @@ module CPU(
 	    sram_control sram_control0(
 	    	.clk(clk),							
 	    	.rst(rst),
-	    	.ramAddr_i(MMU_dataAddr_o),				
+	    	.instAddr_i(MMU_instAddr_o),				
 	    	.storeData_i(MMU_storeData_o),
 	    	.ramOp_i(MMU_ramOp_o),					
 	    	.loadData_o(ext_load_data_o),
 	    	.bytes_i(MMU_bytes_o),
-	    	.CE_n_o(ext_CE_n_o),					
-	    	.WE_n_o(ext_WE_n_o),						
-	    	.OE_n_o(ext_OE_n_o),					
-	    	.be_n_o(ext_be_n_o),
-	    	.data_io(data_io),						
-	    	.success_o(ext_success_o),
-	    	.ramAddr_o(ext_ramAddr_o)
+	    	.ext_ce_n_o(ext_CE_n_o),					
+	    	.ext_we_n_o(ext_WE_n_o),						
+	    	.ext_oe_n_o(ext_OE_n_o),					
+	    	.ext_be_n_o(ext_be_n_o),
+	    	.base_ce_n_o(base_CE_n_o),
+	    	.base_we_n_o(base_WE_n_o),
+	    	.base_oe_n_o(base_OE_n_o),
+	    	.base_be_n_o(base_be_n_o),
+	    	.inst_io(inst_io),
+	    	.dataAddr_o(ext_ramAddr_o),
+	    	.instAddr_o(base_ramAddr_o),
+	    	.pauseRequest(sram_pause_o),
+	    	.dataAddr_i(MMU_dataAddr_o),
+	    	.loadInst_o(base_load_data_o),
+	    	.EX_ramOp_i(EX_ramOp_o),
+	    	.EX_ramAddr_i(EX_LO_data_o),
+	    	.EX_tlbmiss_i(MMU_EX_tlbmiss_o),
+	    	.data_o(sram_data_o),
+	    	.data_io(data_io)
 	    );
 	    
 	    MMU MMU0(
@@ -553,7 +579,7 @@ module CPU(
 	    	.storeData_i(MEM_storeData_o),
 	    	.load_data_i(ext_load_data_o),
 	    	.load_inst_i(base_load_data_o),
-	    	.success_i(ext_success_o),
+	    	
 	    	
 	    	.ramOp_o(MMU_ramOp_o),
 	    	.load_data_o(MMU_load_data_o),
@@ -561,7 +587,6 @@ module CPU(
 	    	.storeData_o(MMU_storeData_o),
 	    	.instAddr_o(MMU_instAddr_o),
 	    	.dataAddr_o(MMU_dataAddr_o),
-	    	.success_o(MMU_success_o),
 	    	.bytes_o(MMU_bytes_o),
 	    	.index_i(MEM_CP0_index_o),
 	    	.random_i(MEM_CP0_random_o),
@@ -571,22 +596,36 @@ module CPU(
 	    	.tlbwi(MEM_tlbwi_o),
 	    	.tlbwr(MEM_tlbwr_o),
 	    	.tlbmiss(MMU_tlbmiss_o),
-	    	.load_o(MMU_load_o)
+	    	.load_o(MMU_load_o),
+	    	.EX_ramAddr_i(EX_LO_data_o),
+	    	.EX_tlbmiss(MMU_EX_tlbmiss_o),
+	    	.uart_load_data_i(uart_loadData_o),
+	    	.uartOp_o(MMU_uartOp_o),
+	    	.uart_storeData_o(MMU_uart_storeData_o),
+	    	.data_io(data_io),
+	    	.uart_data_i(uart_data_o),
+	    	.sram_data_i(sram_data_o),
+	    	.dataReady(data_ready)
 	    );
 	    
-	    inst_sram_control inst_sram_control0(
-			.rst(rst),
-			.ramAddr_i(MMU_instAddr_o),
-		
-			.loadData_o(base_load_data_o),
-			.WE_n_o(base_WE_n_o),
-			.OE_n_o(base_OE_n_o),
-			.CE_n_o(base_CE_n_o),
-			.be_n_o(base_be_n_o),
-			.ramAddr_o(base_ramAddr_o),
-		
-			.data_io(inst_io)
-	    );
+	  uart_control uart_control0(
+	  		.clk(clk),
+	  		.rst(rst),
+	  		.tbre(tbre),
+	  		.tsre(tsre),
+	  		.data_ready(data_ready),
+	  		.storeData(MMU_uart_storeData_o),
+	  		.EX_uartOp_i(EX_ramOp_o),
+	  		.EX_addr_i(EX_LO_data_o),
+	  		.uartOp_i(MMU_uartOp_o),
+	  		
+	  		.rdn(rdn_o),
+	  		.wrn(wrn_o),
+	  		.loadData_o(uart_loadData_o),
+	  		.data_o(uart_data_o),
+	  		.data_io(data_io),
+	  		.pauseRequest(uart_pause_o)
+	  );
 endmodule
     
     

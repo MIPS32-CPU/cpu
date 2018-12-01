@@ -12,11 +12,11 @@ module MEM(
     
     input wire [31:0] storeData_i,
     input wire [3:0] ramOp_i,
-    input wire success_i,
     input wire [31:0] load_data_i,
     input wire in_delay_slot_i,
     input wire [31:0] exceptionType_i,
     input wire [31:0] pc_i,
+    
     
     input wire [31:0] CP0_status_i,
 	input wire [31:0] CP0_cause_i,
@@ -53,9 +53,7 @@ module MEM(
 	output wire [31:0] CP0_entrylo0_o,
 	output wire [31:0] CP0_entrylo1_o,
 	output wire [31:0] CP0_entryhi_o,
-	output reg tlbwi, tlbwr,
-    
-    output reg pauseRequest
+	output reg tlbwi, tlbwr
 );
 	wire addressError;
 	reg [31:0] epc, status, cause, ebase, index, entrylo0, entrylo1, entryhi;
@@ -199,7 +197,6 @@ module MEM(
             writeHILO_o <= 2'b00;
             ramAddr_o <= 32'b0;
             storeData_o <= 32'b0;
-            pauseRequest <= 1'b0;
             write_CP0_o <= 1'b0;
             write_CP0_addr_o <= 5'b0;
             tlbwi <= 1'b0;
@@ -227,12 +224,7 @@ module MEM(
                 tlbwi <= 1'b0;
             end
             
-            if(ramOp_i == `MEM_NOP) begin
-            	pauseRequest <= 1'b0;
-            end else if(success_i == 1'b0) begin
-            	pauseRequest <= 1'b1;
-            end	else if(success_i == 1'b1) begin 	
-            	pauseRequest <= 1'b0;
+            if(ramOp_o != `MEM_NOP) begin
             	LO_data_o <= load_data_i;
             end
         end

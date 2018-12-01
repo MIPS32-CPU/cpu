@@ -79,23 +79,7 @@ module thinpad_top(
     output wire video_clk,         //像素时钟输出
     output wire video_de           //行数据有效信号，用于区分消隐�?
 );
-//wire [31:0] CPU_addr_o, SRAM_data_o;
 
-/*sram_control sram_control0(
-	.clk50(clk_50M),
-	.rst(reset_btn),
-	.ramAddr_i(CPU_addr_o[21:2]),
-
-	
-	.loadData_o(SRAM_data_o),
-	.WE_n_o(base_ram_we_n),
-	.OE_n_o(base_ram_oe_n),
-	.CE_n_o(base_ram_ce_n),
-	.be_n_o(base_ram_be_n),
-	.ramAddr_o(base_ram_addr),
-	
-	.data_io(base_ram_data)
-);*/
 wire[3:0] tmp0;
 wire[3:0] tmp1;
 
@@ -104,25 +88,31 @@ CPU CPU0(
     .rst(reset_btn),
     
     
-    .instAddr_o(base_ram_addr),
-	.dataAddr_o(ext_ram_addr),
+    .instAddr_o(ext_ram_addr),
+	.dataAddr_o(base_ram_addr),
 	
-	.inst_WE_n_o(base_ram_we_n),
-	.inst_OE_n_o(base_ram_oe_n),
-	.inst_CE_n_o(base_ram_ce_n),
-	.inst_be_n_o(base_ram_be_n),
+	.inst_WE_n_o(ext_ram_we_n),
+	.inst_OE_n_o(ext_ram_oe_n),
+	.inst_CE_n_o(ext_ram_ce_n),
+	.inst_be_n_o(ext_ram_be_n),
 	
-	.data_WE_n_o(ext_ram_we_n),
-	.data_OE_n_o(ext_ram_oe_n),
-	.data_CE_n_o(ext_ram_ce_n),
-	.data_be_n_o(ext_ram_be_n),
+	.data_WE_n_o(base_ram_we_n),
+	.data_OE_n_o(base_ram_oe_n),
+	.data_CE_n_o(base_ram_ce_n),
+	.data_be_n_o(base_ram_be_n),
 		
-	.data_io(ext_ram_data),
-	.inst_io(base_ram_data),
+	.data_io(base_ram_data),
+	.inst_io(ext_ram_data),
 	
 	.led_o(leds),
 	.dpy0_o(tmp0),
-	.dpy1_o(tmp1)
+	.dpy1_o(tmp1),
+	
+	.tbre(uart_tbre),
+	.tsre(uart_tsre),
+	.data_ready(uart_dataready),
+	.rdn(uart_rdn),
+	.wrn(uart_wrn)
 );
 
 SEG7_LUT s0(
@@ -135,9 +125,5 @@ SEG7_LUT s1(
     .oSEG1(dpy1)
 );
 
-/*rom rom0(
-	.clk(clk_50M),				.rst(reset_btn),
-	.pc_i(CPU_romAddr_o), 		.inst_o(rom_inst_o)
-);*/
 
 endmodule

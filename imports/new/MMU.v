@@ -9,7 +9,6 @@ module MMU(
 	input wire [31:0] storeData_i,
 	input wire [31:0] load_data_i,
 	input wire [31:0] load_inst_i,
-	input wire success_i,
 	input wire [31:0] entrylo0_i,
 	input wire [31:0] entrylo1_i,
 	input wire [31:0] entryhi_i,
@@ -17,6 +16,12 @@ module MMU(
 	input wire [3:0] random_i,
 	input wire tlbwi,
 	input wire tlbwr,
+	input wire [31:0] EX_ramAddr_i,
+	input wire [31:0] uart_load_data_i,
+	input wire [31:0] uart_data_i,
+	input wire [31:0] sram_data_i,
+	input wire dataReady,
+	
 	
 	output reg [3:0] ramOp_o,
 	output reg [31:0] load_data_o,
@@ -24,11 +29,15 @@ module MMU(
 	output reg [31:0] storeData_o,
 	output reg [19:0] instAddr_o,
 	output reg [19:0] dataAddr_o,
-	output reg success_o,
 	output reg [1:0] bytes_o,
+	output reg [3:0] uartOp_o,
+	output reg [31:0] uart_storeData_o,
 	output wire tlbmiss,
-	output wire load_o
+	output wire EX_tlbmiss,
+	output wire load_o,
+	inout wire [31:0] data_io
 );
+
 	wire [18:0] vpn2 = entryhi_i[31:13];
 	wire [7:0] asid = entryhi_i[7:0];
 	wire [22:0] pfn0 = entrylo0_i[28:6];
@@ -45,21 +54,18 @@ module MMU(
 				 ramOp_i == `MEM_LH || ramOp_i == `MEM_LHU) ? 1'b1 : 1'b0;
 	wire store = (ramOp_i == `MEM_SW || ramOp_i == `MEM_SH || ramOp_i == `MEM_SB) ? 1'b1 : 1'b0;
 	reg tlbmiss_reg;
+	reg uart_enable;
 	assign tlbmiss = tlbmiss_reg;
 	assign load_o = load;
-	reg [3:0] i;
-	
+	//assign data_io = (uart_enable == 1'b1) ? uart_data_i : sram_data_i;
+	assign data_io = sram_data_i;
 	always @(*) begin 
 		if(rst == 1'b1) begin
 			load_inst_o <= 32'b0;
 			instAddr_o <= 20'b0;
-			success_o <= 1'b0;
-			load_data_o <= 32'b0;
 		end else begin
 			load_inst_o <= load_inst_i;
 			instAddr_o <= inst_ramAddr_i[21:2];
-			load_data_o <= load_data_i;
-			success_o <= success_i;
 		end
 	end
 	
@@ -85,12 +91,20 @@ module MMU(
 	
 	always @(*) begin
 		if(rst == 1'b1) begin
+			uartOp_o <= `MEM_NOP;
+			uart_storeData_o <= 32'b0;
 			ramOp_o <= `MEM_NOP;
 			storeData_o <= 32'b0;
 			dataAddr_o <= 20'b0;
 			bytes_o <= 2'b0;
 			tlbmiss_reg <= 1'b0;
+			uart_enable <= 1'b0;
+			load_data_o <= 32'b0;
+			
 		end else if(data_ramAddr_i < 32'h80000000) begin
+			uart_enable <= 1'b0;
+			uartOp_o <= `MEM_NOP;
+			uart_storeData_o <= 32'b0;
 			storeData_o <= storeData_i;
 			if(load || store) begin
 				if(tlb[0][`VPN2] == data_ramAddr_i[31:13] &&
@@ -126,9 +140,9 @@ module MMU(
 				end else if(tlb[3][`VPN2] == data_ramAddr_i[31:13] &&
 				   (tlb[3][`G] == 1'b1 || tlb[3][`ASID] == asid)) begin
 					if(data_ramAddr_i[12] == 1'b0) begin
-						dataAddr_o <= {tlb[4][`PFN0], data_ramAddr_i[11:2]};
+						dataAddr_o <= {tlb[3][`PFN0], data_ramAddr_i[11:2]};
 					end else begin
-						dataAddr_o <= {tlb[4][`PFN1], data_ramAddr_i[11:2]};
+						dataAddr_o <= {tlb[3][`PFN1], data_ramAddr_i[11:2]};
 					end		
 					ramOp_o <= ramOp_i;
 					bytes_o <= data_ramAddr_i[1:0];
@@ -266,13 +280,104 @@ module MMU(
 				bytes_o <= 2'b0;
 				tlbmiss_reg <= 1'b0;
 			end
-					
+			load_data_o <= load_data_i;
+		end else if(data_ramAddr_i == 32'hBFD003F8) begin
+			uart_enable <= 1'b1;
+			uartOp_o <= ramOp_i;
+			uart_storeData_o <= storeData_i;
+			ramOp_o <= `MEM_NOP;
+			storeData_o <= 32'b0;
+			dataAddr_o <= 20'b0;
+			bytes_o <= 2'b0;
+			tlbmiss_reg <= 1'b0;
+			load_data_o <= uart_load_data_i;	
+		end else if(data_ramAddr_i == 32'hBFD003FC) begin
+			if(dataReady == 1'b1) begin
+				load_data_o <= 32'h00000002;
+			end else begin
+				load_data_o <= 32'h00000001;
+			end
+			
+			uart_enable <= 1'b0;
+			uartOp_o <= `MEM_NOP;
+			uart_storeData_o <= 32'b0;
+			ramOp_o <= `MEM_NOP;
+			storeData_o <= 32'b0;
+			dataAddr_o <= 20'b0;
+			bytes_o <= 2'b0;
+			tlbmiss_reg <= 1'b0;
 		end else begin
+			uartOp_o <= `MEM_NOP;
+			uart_storeData_o <= 32'b0;
 			ramOp_o <= ramOp_i;
 			storeData_o <= storeData_i;
 			dataAddr_o <= data_ramAddr_i[21:2];
 			bytes_o <= data_ramAddr_i[1:0];
 			tlbmiss_reg <= 1'b0;
+			uart_enable <= 1'b0;
+			load_data_o <= load_data_i;
+		end
+	end
+	
+	reg EX_tlbmiss_reg;
+	assign EX_tlbmiss = EX_tlbmiss_reg;
+	always @(*) begin
+		if(rst == 1'b1) begin
+			EX_tlbmiss_reg <= 1'b0;
+		end else if(EX_ramAddr_i < 32'h80000000)begin
+			if(tlb[0][`VPN2] == EX_ramAddr_i[31:13] &&
+			   (tlb[0][`G] == 1'b1 || tlb[0][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[1][`VPN2] == EX_ramAddr_i[31:13] &&
+			   (tlb[1][`G] == 1'b1 || tlb[1][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[2][`VPN2] == EX_ramAddr_i[31:13] &&
+			   (tlb[2][`G] == 1'b1 || tlb[2][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[3][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[3][`G] == 1'b1 || tlb[3][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[4][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[4][`G] == 1'b1 || tlb[4][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[5][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[5][`G] == 1'b1 || tlb[5][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[6][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[6][`G] == 1'b1 || tlb[6][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[7][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[7][`G] == 1'b1 || tlb[7][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[8][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[8][`G] == 1'b1 || tlb[8][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[9][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[9][`G] == 1'b1 || tlb[9][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[10][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[10][`G] == 1'b1 || tlb[10][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[11][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[11][`G] == 1'b1 || tlb[11][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[12][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[12][`G] == 1'b1 || tlb[12][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[13][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[13][`G] == 1'b1 || tlb[13][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[14][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[14][`G] == 1'b1 || tlb[14][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else if(tlb[15][`VPN2] == EX_ramAddr_i[31:13] &&
+				(tlb[15][`G] == 1'b1 || tlb[15][`ASID] == asid)) begin
+				EX_tlbmiss_reg <= 1'b0;
+			end else begin
+				EX_tlbmiss_reg <= 1'b1;
+			end
+		end else begin
+			EX_tlbmiss_reg <= 1'b0;
 		end
 	end
 	

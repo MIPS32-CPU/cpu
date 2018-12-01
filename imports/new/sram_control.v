@@ -3,104 +3,159 @@
 module sram_control (
 	input wire clk,
 	input wire rst,
-	input wire [19:0] ramAddr_i,
+	input wire [19:0] dataAddr_i,
+	input wire [19:0] instAddr_i,
 	input wire [31:0] storeData_i,
 	input wire [3:0] ramOp_i,
 	input wire [1:0] bytes_i,
 	
+	input wire [3:0] EX_ramOp_i,
+	input wire [31:0] EX_ramAddr_i,
+	input wire [3:0] MEM_ramAddr_i,
+	input wire EX_tlbmiss_i,
+	
+	output reg [31:0] loadInst_o,
 	output reg [31:0] loadData_o,
-	output reg WE_n_o,
-	output reg OE_n_o,
-	output reg CE_n_o,
-	output reg [3:0] be_n_o,
-	output reg [19:0] ramAddr_o,
-	output reg success_o,
+	output reg base_we_n_o, base_ce_n_o, base_oe_n_o,
+	output reg [3:0] base_be_n_o,
+	output reg ext_we_n_o, ext_ce_n_o, ext_oe_n_o,
+	output reg [3:0] ext_be_n_o,
+	output reg [19:0] instAddr_o,
+	output reg [19:0] dataAddr_o,
+	output reg pauseRequest,
 	
+	output wire [31:0] data_o,
+	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
-);	
+);
 	
-	reg [2:0] state, nstate;
-	//wire write;
-	assign data_io = (ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz));
-	//assign write = (ramOp_i == `MEM_SW || ramOp_i == `MEM_SH || ramOp_i == `MEM_SB) ? 1'b1 : 1'b0;
+
+	wire write, load, now_write, now_load;
+	wire base_read, base_write, ext_read, ext_write, now_base_read, now_base_write, now_ext_write, now_ext_read;
+	wire base, ext, now_base, now_ext;
+	wire addressError;
+	assign addressError = (EX_ramOp_i == `MEM_LW) && (EX_ramAddr_i[1:0] != 2'b0) ||
+						  (EX_ramOp_i == `MEM_LH) && (EX_ramAddr_i[0] != 1'b0) ||
+						  (EX_ramOp_i == `MEM_LHU) && (EX_ramAddr_i[0] != 1'b0) ||
+						  (EX_ramOp_i == `MEM_SW) && (EX_ramAddr_i[1:0] != 2'b0) ||
+						  (EX_ramOp_i == `MEM_SH) && (EX_ramAddr_i[0] != 1'b0);
 	
-	parameter IDLE = 3'b00,
-			  WRITE = 3'b10,
-			  READ = 3'b11,
-			  WRITEEND = 3'b100,
-			  WRITE2 = 3'b101,
-			  WRITE3 = 3'b110;
+	assign write = ((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
+	assign load = (write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
+	//assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000);
+	assign base = 1'b0;
+	assign ext = ~base;
+	assign base_read = load && base;
+	assign base_write = write && base; 
+	assign ext_read = load && ext;
+	assign ext_write = write && ext;
+	
+	/*assign now_write = (ramOp_i == `MEM_SW || ramOp_i == `MEM_SH || ramOp_i == `MEM_SB) ? 1'b1 : 1'b0;
+	assign now_load = (now_write == 0 && ramOp_i != `MEM_NOP) ? 1'b1 : 1'b0;
+	assign now_base = (MEM_ramAddr_i < 32'h80400000) & (MEM_ramAddr_i >= 32'h80000000);
+	assign now_ext = ~now_base;
+	assign now_base_read = now_load && now_base;
+	assign now_base_write = now_write && base; 
+	assign now_ext_read = now_load && now_ext;
+	assign now_ext_write = now_write && now_ext;*/
+	
+	
+	reg [2:0] state, nstate, pstate;	
+	reg [31:0] loadData_reg;
+	parameter IDLE = 4'd0, 				//instruction fetch
+			  WRITE_BASE = 4'd1,
+			  WRITE_BASE_HOLD = 4'd2,
+			  READ_BASE = 4'd3,
+			  WRITE_EXT = 4'd4,
+			  WRITE_EXT_HOLD = 4'd5,
+			  READ_EXT = 4'd6,
+			  READ_BASE_END = 4'd7;
 			  
-	always @(posedge clk or posedge rst) begin
+	assign data_o = (ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz));
+	assign inst_io = (state != WRITE_BASE && state != WRITE_BASE_HOLD) ? 32'bz : ((ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz)));
+		  
+	always @(posedge clk) begin
 		if(rst == 1'b1) begin
 			state <= IDLE;
+			pstate <= IDLE;
+			loadData_reg <= 32'b0;
 		end else begin
 			state <= nstate;
+			pstate <= state;
+			if(state == READ_BASE) begin
+				loadData_reg <= loadData_o;
+			end
 		end
 	end
 		
     always @(*) begin
-    	if(rst == 1'b1 || ramOp_i == 4'b0) begin
-			WE_n_o <= 1'b1;
-			CE_n_o <= 1'b1;
-			OE_n_o <= 1'b1;
-			be_n_o <= 4'b1111;
-			ramAddr_o <= 20'b0;
+    	if(rst == 1'b1) begin
+			base_we_n_o <= 1'b1;
+			base_ce_n_o <= 1'b0;
+			base_oe_n_o <= 1'b0;
+			base_be_n_o <= 4'b0000;
+			ext_we_n_o <= 1'b1;
+			ext_ce_n_o <= 1'b1;
+			ext_oe_n_o <= 1'b1;
+			ext_be_n_o <= 4'b1111;
+			instAddr_o <= instAddr_i;
+			dataAddr_o <= 20'b0;
 			loadData_o <= 32'b0;
-			success_o <= 1'b0;
+			loadInst_o <= inst_io;
+			pauseRequest <= 1'b0;
 			nstate <= IDLE;
 		end else begin
-			ramAddr_o <= ramAddr_i;
-			OE_n_o <= 1'b0;
-            CE_n_o <= 1'b0;
 			case(state) 
 				IDLE: begin
-					WE_n_o <= 1'b1;
-					be_n_o <= 4'b0000;
-					loadData_o <= 32'b0;
-					success_o <= 1'b0;
+					base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b1;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b1111;
+					instAddr_o <= instAddr_i;
+					dataAddr_o <= 20'b0;
+					loadInst_o <= inst_io;
 					
-					case(ramOp_i) 
-						`MEM_LW: begin
-							nstate <= READ;
-						end
-						`MEM_SW: begin
-							nstate <= WRITE;
-						end
-						
-						`MEM_SB: begin
-							nstate <= WRITE;
-						end
-						
-						`MEM_SH: begin
-							nstate <= WRITE;
-						end
-						
-						`MEM_LB: begin
-							nstate <= READ;
-						end
-						
-						`MEM_LH: begin
-							nstate <= READ;
-						end
-						
-						`MEM_LBU: begin
-							nstate <= READ;
-						end
-						
-						`MEM_LHU: begin
-							nstate <= READ;
-						end
-
-						default: begin
-							nstate <= IDLE;
-						end
-					endcase
+					if(pstate == READ_BASE) begin
+						loadData_o <= loadData_reg;
+					end else begin
+						loadData_o <= 32'b0;
+					end
+					
+					pauseRequest <= 1'b0;
+					
+					if(base_read == 1'b1) begin
+						nstate <= READ_BASE;
+					end else if(base_write == 1'b1) begin
+						nstate <= WRITE_BASE;
+					end else if(ext_read == 1'b1) begin
+						nstate <= READ_EXT;
+					end else if(ext_write == 1'b1) begin
+						nstate <= WRITE_EXT;
+					end else begin
+						nstate <= IDLE;
+					end
 				end
 				
 				
-				READ: begin
-                                
+				READ_EXT: begin
+                    base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b0;
+					ext_oe_n_o <= 1'b0;
+					ext_be_n_o <= 4'b0000;
+					instAddr_o <= instAddr_i;
+					dataAddr_o <= dataAddr_i;
+					loadInst_o <= inst_io;
+					loadData_o <= data_io;
+					pauseRequest <= 1'b0;      
+					      
                     case(ramOp_i) 
                         `MEM_LB: begin
                         	if(bytes_i == 2'b00) begin
@@ -146,74 +201,337 @@ module sram_control (
                             loadData_o <= data_io;
                         end
                     endcase
-                    WE_n_o <= 1'b1;
-                    be_n_o <= 4'b0000;
-                    success_o <= 1'b1;
-                    nstate <= IDLE;
+                    
+                    if(base_read == 1'b1) begin
+                    	nstate <= READ_BASE;
+                    end else if(base_write == 1'b1) begin
+                    	nstate <= WRITE_BASE;
+                    end else if(ext_read == 1'b1) begin
+                    	nstate <= READ_EXT;
+                    end else if(ext_write == 1'b1) begin
+                    	nstate <= WRITE_EXT;
+                    end else begin
+                    	nstate <= IDLE;
+                    end
                 end
 				
 				
-				WRITE: begin
-				    WE_n_o <= 1'b0;
+				WRITE_EXT: begin
+					base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b0;
+					ext_ce_n_o <= 1'b0;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b0000;
+					instAddr_o <= instAddr_i;
+					dataAddr_o <= dataAddr_i;
+					loadInst_o <= inst_io;
+					loadData_o <= 20'b0;
+					pauseRequest <= 1'b1;
+				    
 				    case(ramOp_i)
                         `MEM_SW: begin
-                            be_n_o <= 4'b0000;
+                            ext_be_n_o <= 4'b0000;
                         end
 
                         `MEM_SH: begin
                         	if(bytes_i == 2'b00) begin
-                            	be_n_o <= 4'b1100;
+                            	ext_be_n_o <= 4'b1100;
                             end else if(bytes_i == 2'b10) begin
-                            	be_n_o <= 4'b0011;
+                            	ext_be_n_o <= 4'b0011;
                             end else begin
-                            	be_n_o <= 4'b1111;
+                            	ext_be_n_o <= 4'b1111;
                             end
                         end
 
                         `MEM_SB: begin
                         	if(bytes_i == 2'b00) begin
-                            	be_n_o <= 4'b1110;
+                            	ext_be_n_o <= 4'b1110;
                             end else if(bytes_i == 2'b01) begin
-                            	be_n_o <= 4'b1101;
+                            	ext_be_n_o <= 4'b1101;
                             end else if(bytes_i == 2'b10) begin
-                            	be_n_o <= 4'b1011;
+                            	ext_be_n_o <= 4'b1011;
                             end else begin
-                            	be_n_o <= 4'b0111;
+                            	ext_be_n_o <= 4'b0111;
                             end
                         end
                         
                         default: begin
-                            be_n_o <= 4'b1111;
+                            ext_be_n_o <= 4'b1111;
                         end
                     endcase
-                    loadData_o <= 32'b0;
-                    success_o <= 1'b0;
-				    nstate <= WRITE2;
+                    
+				    nstate <= WRITE_EXT_HOLD;
+				    
 				end
 				
-				WRITE2: begin
-				    WE_n_o <= 1'b1;
-				    be_n_o <= 4'b1111;
-				    loadData_o <= 32'b0;
-                    success_o <= 1'b1;
-				    nstate <= IDLE;
-				end
-				
-				WRITEEND: begin
-					success_o <= 1'b1;
-					WE_n_o <= 1'b1;
-                    be_n_o <= 4'b1111;
-                    loadData_o <= 32'b0;
+				WRITE_EXT_HOLD: begin
+				    base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b0;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b0000;
+					instAddr_o <= instAddr_i;
+					dataAddr_o <= dataAddr_i;
+					loadInst_o <= inst_io;
+					loadData_o <= 20'b0;
+					pauseRequest <= 1'b0;
 					
+					case(ramOp_i)
+						`MEM_SW: begin
+							ext_be_n_o <= 4'b0000;
+						end
+
+						`MEM_SH: begin
+							if(bytes_i == 2'b00) begin
+								ext_be_n_o <= 4'b1100;
+							end else if(bytes_i == 2'b10) begin
+								ext_be_n_o <= 4'b0011;
+							end else begin
+								ext_be_n_o <= 4'b1111;
+							end
+						end
+
+						`MEM_SB: begin
+							if(bytes_i == 2'b00) begin
+								ext_be_n_o <= 4'b1110;
+							end else if(bytes_i == 2'b01) begin
+								ext_be_n_o <= 4'b1101;
+							end else if(bytes_i == 2'b10) begin
+								ext_be_n_o <= 4'b1011;
+							end else begin
+								ext_be_n_o <= 4'b0111;
+							end
+						end
+						
+						default: begin
+							ext_be_n_o <= 4'b1111;
+						end
+					endcase
+					
+				    if(base_read == 1'b1) begin
+						nstate <= READ_BASE;
+					end else if(base_write == 1'b1) begin
+						nstate <= WRITE_BASE;
+					end else if(ext_read == 1'b1) begin
+						nstate <= READ_EXT;
+					end else if(ext_write == 1'b1) begin
+						nstate <= WRITE_EXT;
+					end else begin
+						nstate <= IDLE;
+					end
+				end
+				
+				READ_BASE: begin
+					base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b1;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b1111;
+					instAddr_o <= dataAddr_i;
+					dataAddr_o <= 20'b0;
+					loadInst_o <= 32'b0;
+					loadData_o <= inst_io;
+					pauseRequest <= 1'b1;      
+						  
+					case(ramOp_i) 
+						`MEM_LB: begin
+							if(bytes_i == 2'b00) begin
+								loadData_o <= {{24{inst_io[7]}}, inst_io[7:0]};
+							end else if(bytes_i == 2'b01) begin
+								loadData_o <= {{24{inst_io[15]}}, inst_io[15:8]};
+							end else if(bytes_i == 2'b10) begin
+								loadData_o <= {{24{inst_io[23]}}, inst_io[23:16]};
+							end else begin
+								loadData_o <= {{24{inst_io[31]}}, inst_io[31:24]};
+							end
+						end
+						
+						`MEM_LBU: begin
+							if(bytes_i == 2'b00) begin
+								loadData_o <= {24'b0, inst_io[7:0]};
+							end else if(bytes_i == 2'b01) begin
+								loadData_o <= {24'b0, inst_io[15:8]};
+							end else if(bytes_i == 2'b10) begin
+								loadData_o <= {24'b0, inst_io[23:16]};
+							end else begin
+								loadData_o <= {24'b0, inst_io[31:24]};
+							end
+						end
+												
+						`MEM_LH: begin
+							if(bytes_i == 2'b00) begin
+								loadData_o <= {{16{inst_io[15]}}, inst_io[15:0]};
+							end else begin
+								loadData_o <= {{16{inst_io[31]}}, inst_io[31:16]};
+							end
+						end
+						
+						`MEM_LHU: begin
+							if(bytes_i == 2'b00) begin
+								loadData_o <= {16'b0, inst_io[15:0]};
+							end else begin
+								loadData_o <= {16'b0, inst_io[31:16]};
+							end
+						end
+						
+						default: begin
+							loadData_o <= inst_io;
+						end
+					endcase
+					
+					/*if(base_read == 1'b1) begin
+						nstate <= READ_BASE;
+					end else if(base_write == 1'b1) begin
+						nstate <= WRITE_BASE;
+					end else if(ext_read == 1'b1) begin
+						nstate <= READ_EXT;
+					end else if(ext_write == 1'b1) begin
+						nstate <= WRITE_EXT;
+					end else begin
+						nstate <= IDLE;
+					end*/
 					nstate <= IDLE;
 				end
 				
+				WRITE_BASE: begin
+					base_we_n_o <= 1'b0;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b1;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b1;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b1111;
+					instAddr_o <= dataAddr_i;
+					dataAddr_o <= 20'b0;
+					loadInst_o <= 32'b0;
+					loadData_o <= 20'b0;
+					pauseRequest <= 1'b1;
+					
+					case(ramOp_i)
+						`MEM_SW: begin
+							base_be_n_o <= 4'b0000;
+						end
+
+						`MEM_SH: begin
+							if(bytes_i == 2'b00) begin
+								base_be_n_o <= 4'b1100;
+							end else if(bytes_i == 2'b10) begin
+								base_be_n_o <= 4'b0011;
+							end else begin
+								base_be_n_o <= 4'b1111;
+							end
+						end
+
+						`MEM_SB: begin
+							if(bytes_i == 2'b00) begin
+								base_be_n_o <= 4'b1110;
+							end else if(bytes_i == 2'b01) begin
+								base_be_n_o <= 4'b1101;
+							end else if(bytes_i == 2'b10) begin
+								base_be_n_o <= 4'b1011;
+							end else begin
+								base_be_n_o <= 4'b0111;
+							end
+						end
+						
+						default: begin
+							base_be_n_o <= 4'b1111;
+						end
+					endcase
+					
+					/*if(base_write == 1'b1) begin
+						nstate <= WRITE_BASE;
+					end else begin*/
+						nstate <= WRITE_BASE_HOLD;
+					//end
+				end
+				
+				WRITE_BASE_HOLD: begin
+					base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b1;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b1;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b1111;
+					instAddr_o <= dataAddr_i;
+					dataAddr_o <= 20'b0;
+					loadInst_o <= 32'b0;
+					loadData_o <= 20'b0;
+					pauseRequest <= 1'b1;
+					
+					case(ramOp_i)
+						`MEM_SW: begin
+							base_be_n_o <= 4'b0000;
+						end
+
+						`MEM_SH: begin
+							if(bytes_i == 2'b00) begin
+								base_be_n_o <= 4'b1100;
+							end else if(bytes_i == 2'b10) begin
+								base_be_n_o <= 4'b0011;
+							end else begin
+								base_be_n_o <= 4'b1111;
+							end
+						end
+
+						`MEM_SB: begin
+							if(bytes_i == 2'b00) begin
+								base_be_n_o <= 4'b1110;
+							end else if(bytes_i == 2'b01) begin
+								base_be_n_o <= 4'b1101;
+							end else if(bytes_i == 2'b10) begin
+								base_be_n_o <= 4'b1011;
+							end else begin
+								base_be_n_o <= 4'b0111;
+							end
+						end
+						
+						default: begin
+							base_be_n_o <= 4'b1111;
+						end
+					endcase
+					
+					/*if(base_read == 1'b1) begin
+						nstate <= READ_BASE;
+					end else if(base_write == 1'b1) begin
+						nstate <= WRITE_BASE;
+					end else if(ext_read == 1'b1) begin
+						nstate <= READ_EXT;
+					end else if(ext_write == 1'b1) begin
+						nstate <= WRITE_EXT;
+					end else begin
+						nstate <= IDLE;
+					end*/
+					nstate <= IDLE;
+					
+				end
+				
 				default: begin
-				    
-				    WE_n_o <= 1'b1;
-                    be_n_o <= 4'b1111;
-                    loadData_o <= 32'b0;
-                    success_o <= 1'b0;
+				    base_we_n_o <= 1'b1;
+					base_ce_n_o <= 1'b0;
+					base_oe_n_o <= 1'b0;
+					base_be_n_o <= 4'b0000;
+					ext_we_n_o <= 1'b1;
+					ext_ce_n_o <= 1'b1;
+					ext_oe_n_o <= 1'b1;
+					ext_be_n_o <= 4'b1111;
+					instAddr_o <= instAddr_i;
+					dataAddr_o <= 20'b0;
+					loadInst_o <= inst_io;
+					loadData_o <= 32'b0;
+					pauseRequest <= 1'b0;
                     nstate <= IDLE;
 				end
 			
