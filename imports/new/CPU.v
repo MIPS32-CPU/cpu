@@ -7,9 +7,7 @@ In fact, one wire can link two ends.
 module CPU(
     input wire clk,
     input wire rst,
-    input wire tbre,
-    input wire tsre,
-    input wire data_ready,
+    input wire rxd,
     
     output wire [19:0] instAddr_o,
 	output wire [19:0] dataAddr_o,
@@ -28,8 +26,7 @@ module CPU(
 	output wire [3:0] dpy0_o,
 	output wire [3:0] dpy1_o,
 	
-	output wire rdn,
-	output wire wrn,
+	output wire txd,
 	
 	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
@@ -163,15 +160,20 @@ module CPU(
     wire [19:0] MMU_instAddr_o, MMU_dataAddr_o;
     wire [1:0] MMU_bytes_o;
     wire MMU_tlbmiss_o, MMU_load_o, MMU_EX_tlbmiss_o;
-    wire MMU_uartOp_o;
+    wire [3:0] MMU_uartOp_o;
     wire [31:0] MMU_uart_storeData_o;
     
     //uart control
-    wire rdn_o, wrn_o;
 	wire [31:0] uart_loadData_o;
 	wire uart_pause_o;
 	wire [31:0] uart_data_o;
-    
+	wire uart_txd, uart_dataReady, uart_writeReady;
+	assign txd = uart_txd;
+	/*assign led_o[15] = uart_dataReady;
+    assign led_o[14] = rxd;
+    assign led_o[13] = txd;
+    assign led_o[12] = uart_writeReady;*/
+    assign led_o[15:8] = uart_loadData_o[7:0];
     wire mem_pause_o;
     assign mem_pause_o = uart_pause_o || sram_pause_o;	
     
@@ -281,7 +283,7 @@ module CPU(
 	        .writeEnable_i(MEM_WB_writeEnable_o),   
 	        .writeAddr_i(MEM_WB_writeAddr_o), 
 	        .writeData_i(MEM_WB_LO_data_o),
-	        .led_o(led_o),
+	        .led_o(led_o[7:0]),
 	        .dpy0_o(dpy0_o),
 	        .dpy1_o(dpy1_o),
 	        .readData1_o(reg_readData1_o), 
@@ -566,7 +568,6 @@ module CPU(
 	    	.EX_ramOp_i(EX_ramOp_o),
 	    	.EX_ramAddr_i(EX_LO_data_o),
 	    	.EX_tlbmiss_i(MMU_EX_tlbmiss_o),
-	    	.data_o(sram_data_o),
 	    	.data_io(data_io)
 	    );
 	    
@@ -602,29 +603,24 @@ module CPU(
 	    	.uart_load_data_i(uart_loadData_o),
 	    	.uartOp_o(MMU_uartOp_o),
 	    	.uart_storeData_o(MMU_uart_storeData_o),
-	    	.data_io(data_io),
-	    	.uart_data_i(uart_data_o),
-	    	.sram_data_i(sram_data_o),
-	    	.dataReady(data_ready)
+	    	.dataReady(uart_dataReady),
+	    	.writeReady(uart_writeReady)
 	    );
 	    
 	  uart_control uart_control0(
 	  		.clk(clk),
 	  		.rst(rst),
-	  		.tbre(tbre),
-	  		.tsre(tsre),
-	  		.data_ready(data_ready),
+	  		.rxd(rxd),
 	  		.storeData(MMU_uart_storeData_o),
 	  		.EX_uartOp_i(EX_ramOp_o),
 	  		.EX_addr_i(EX_LO_data_o),
 	  		.uartOp_i(MMU_uartOp_o),
 	  		
-	  		.rdn(rdn_o),
-	  		.wrn(wrn_o),
+	  		.txd(uart_txd),
 	  		.loadData_o(uart_loadData_o),
-	  		.data_o(uart_data_o),
-	  		.data_io(data_io),
-	  		.pauseRequest(uart_pause_o)
+	  		.dataReady(uart_dataReady),
+	  		.pauseRequest(uart_pause_o),
+	  		.writeReady(uart_writeReady)
 	  );
 endmodule
     

@@ -18,10 +18,8 @@ module MMU(
 	input wire tlbwr,
 	input wire [31:0] EX_ramAddr_i,
 	input wire [31:0] uart_load_data_i,
-	input wire [31:0] uart_data_i,
-	input wire [31:0] sram_data_i,
 	input wire dataReady,
-	
+	input wire writeReady,
 	
 	output reg [3:0] ramOp_o,
 	output reg [31:0] load_data_o,
@@ -34,8 +32,7 @@ module MMU(
 	output reg [31:0] uart_storeData_o,
 	output wire tlbmiss,
 	output wire EX_tlbmiss,
-	output wire load_o,
-	inout wire [31:0] data_io
+	output wire load_o
 );
 
 	wire [18:0] vpn2 = entryhi_i[31:13];
@@ -57,8 +54,7 @@ module MMU(
 	reg uart_enable;
 	assign tlbmiss = tlbmiss_reg;
 	assign load_o = load;
-	//assign data_io = (uart_enable == 1'b1) ? uart_data_i : sram_data_i;
-	assign data_io = sram_data_i;
+
 	always @(*) begin 
 		if(rst == 1'b1) begin
 			load_inst_o <= 32'b0;
@@ -291,12 +287,16 @@ module MMU(
 			bytes_o <= 2'b0;
 			tlbmiss_reg <= 1'b0;
 			load_data_o <= uart_load_data_i;	
+			//load_data_o <= 32'h31;
 		end else if(data_ramAddr_i == 32'hBFD003FC) begin
-			if(dataReady == 1'b1) begin
+			/*if(dataReady == 1'b1) begin
 				load_data_o <= 32'h00000002;
-			end else begin
+			end else if(writeReady == 1'b1) begin
 				load_data_o <= 32'h00000001;
-			end
+			end else begin
+				load_data_o <= 32'h0;
+			end*/
+			load_data_o <= {30'b0, dataReady, writeReady};
 			
 			uart_enable <= 1'b0;
 			uartOp_o <= `MEM_NOP;

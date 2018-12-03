@@ -2,36 +2,69 @@
 module uart_control(
 	input wire clk,
 	input wire rst,
-	input wire tbre,
-	input wire tsre,
-	input wire data_ready,
-	input wire storeData,
+	input wire rxd,
+	input wire [31:0] storeData,
 	input wire [3:0] uartOp_i,
 	input wire [3:0] EX_uartOp_i,
 	input wire [31:0] EX_addr_i,
 	
-	
-	output reg rdn,
-	output reg wrn,
+	output wire txd,
 	output reg [31:0] loadData_o,
 	output reg pauseRequest,
-	output wire [31:0] data_o,
-	inout wire [31:0] data_io
+	output wire dataReady,
+	output wire writeReady
 );
-	assign data_o = (uartOp_i == `MEM_SB) ? storeData : 32'bz;
-	reg [3:0] state, nstate;
-	parameter INIT = 4'd0,
-			  READ1 = 4'd1,
-			  READ2 = 4'd2,
-			  READ3 = 4'd3,
-			  WRITE1 = 4'd4,
-			  WRITE2 = 4'd5,
-			  WRITE3 = 4'd6,
-			  WRITE4 = 4'd7;
+	
+	parameter IDLE = 4'd0,
+			  READ = 4'd1,
+			  WRITE = 4'd2,
+			  WRITE_HOLD = 4'd3;
+	reg [3:0] state;
+	reg [3:0] nstate;
+	wire [7:0] ext_uart_rx;
+	reg  [7:0] ext_uart_tx;
+	wire ext_uart_ready, ext_uart_busy;
+	reg ext_uart_start, ext_uart_clear;
+	assign dataReady = ext_uart_ready;
+	assign writeReady = ~ext_uart_busy;
+
+	/*always @(posedge clk) begin
+		pauseRequest <= 1'b0;
+		ext_uart_start <= 1'b0;
+		ext_uart_clear <= 1'b0;
+		loadData_o <= 32'b0;
+		if(uartOp_i == `MEM_SB || uartOp_i == `MEM_LB) begin
+			if(uartOp_i == `MEM_SB) begin
+				if(~ext_uart_busy) begin
+					if(~pauseRequest) begin
+						ext_uart_tx <= storeData[7:0];
+						ext_uart_start <= 1'b1;
+						pauseRequest <= 1'b1;
+					end
+				end else begin
+					ext_uart_start <= 1'b0;
+					pauseRequest <= 1'b0;
+				end
+			end else begin
+				if(ext_uart_ready) begin
+					loadData_o <= {24'b0, 8'h31};
+					ext_uart_clear <= 1'b1;
+					pauseRequest <= 1'b0;
+				end else begin
+					pauseRequest <= 1'b1;
+				end
+			end
 		
+		end else begin
+			pauseRequest <= 1'b0;
+			ext_uart_start <= 1'b0;
+			ext_uart_clear <= 1'b0;
+			loadData_o <= 32'h0;
+		end
+	end*/
 	always @(posedge clk) begin
 		if(rst == 1'b1) begin
-			state <= INIT;
+			state <= IDLE;
 		end else begin
 			state <= nstate;
 		end
@@ -39,126 +72,109 @@ module uart_control(
 	
 	always @(*) begin
 		if(rst == 1'b1) begin
-			wrn <= 1'b1;
-			rdn <= 1'b1;
+			nstate <= IDLE;
 			pauseRequest <= 1'b0;
 			loadData_o <= 32'b0;
-			
-			nstate <= INIT;
-			
+			ext_uart_start <= 1'b0;
+			ext_uart_clear <= 1'b0;
+			ext_uart_tx <= 8'b0;
 		end else begin
-			case(state)
-				INIT: begin
-					wrn <= 1'b1;
-					rdn <= 1'b1;
+			case(state) 
+				IDLE: begin
 					pauseRequest <= 1'b0;
-					loadData_o <= 32'b0;
-					
+					loadData_o <= 32'h32;
+					ext_uart_start <= 1'b0;
+					ext_uart_clear <= 1'b0;
+					ext_uart_tx <= 8'b0;
 					if(EX_uartOp_i == `MEM_SB && EX_addr_i == 32'hBFD003F8) begin
-						nstate <= WRITE1;
+						nstate <= WRITE;
 					end else if(EX_uartOp_i == `MEM_LB && EX_addr_i == 32'hBFD003F8) begin
-						nstate <= READ1;
+						nstate <= READ;
 					end else begin
-						nstate <= INIT;
+						nstate <= IDLE;
 					end
-					
 				end
 				
-				WRITE1: begin
-					
-					wrn <= 1'b0;
-					rdn <= 1'b1;
-					pauseRequest <= 1'b1;
-					loadData_o <= 32'b0;
-					nstate <= WRITE2;
-					
-				end
-				
-				WRITE2: begin
-					wrn <= 1'b1;
-					rdn <= 1'b1;
-					
-					pauseRequest <= 1'b1;
-					loadData_o <= 32'b0;
-					nstate <= WRITE3;
-					
-				end
-				
-				WRITE3: begin
-					wrn <= 1'b1;
-					rdn <= 1'b1;
-					
-					pauseRequest <= 1'b1;
-					loadData_o <= 32'b0;
-					if(tbre == 1'b1) begin
-						nstate <= WRITE4;
+				READ: begin
+					if(ext_uart_ready) begin
+						loadData_o <= {24'b0, ext_uart_rx};
+						ext_uart_start <= 1'b0;
+						ext_uart_clear <= 1'b1;
+						ext_uart_tx <= 8'b0;
+						pauseRequest <= 1'b0;
+						if(EX_uartOp_i == `MEM_SB && EX_addr_i == 32'hBFD003F8) begin
+							nstate <= WRITE;
+						end else if(EX_uartOp_i == `MEM_LB && EX_addr_i == 32'hBFD003F8) begin
+							nstate <= READ;
+						end else begin
+							nstate <= IDLE;
+						end
 					end else begin
-						nstate <= WRITE3;
+						loadData_o <= 32'h0;
+						ext_uart_start <= 1'b0;
+						ext_uart_clear <= 1'b0;
+						ext_uart_tx <= 8'b0;
+						pauseRequest <= 1'b1;
+						nstate <= READ;
 					end
-					
 				end
 				
-				WRITE4: begin
-					wrn <= 1'b1;
-					rdn <= 1'b1;
-					
+				WRITE: begin
+					loadData_o <= 32'h33;
 					pauseRequest <= 1'b1;
-					loadData_o <= 32'b0;
-					if(tsre == 1'b1) begin
-						nstate <= INIT;
+					if(~ext_uart_busy) begin		
+						ext_uart_tx <= storeData[7:0];
+						ext_uart_start <= 1'b1;
+						nstate <= WRITE_HOLD;
 					end else begin
-						nstate <= WRITE4;
-					end 
-					
+						ext_uart_tx <= storeData[7:0];
+						ext_uart_start <= 1'b0;
+						nstate <= WRITE;
+					end
 				end
 				
-				READ1: begin
-					rdn <= 1'b1;
-					wrn <= 1'b1;
-					loadData_o <= 32'b0;
-					
-					pauseRequest <= 1'b1;
-					nstate <= READ2;
-					
-				end 
-				
-				READ2: begin
-					wrn <= 1'b1;
-					
-					loadData_o <= 32'b0;
-					pauseRequest <= 1'b1;
-					if(data_ready == 1'b1) begin
-						rdn <= 1'b0;
-						nstate <= READ3;
+				WRITE_HOLD: begin
+					loadData_o <= 32'h34;
+					ext_uart_tx <= storeData[7:0];
+					ext_uart_start <= 1'b0;
+					pauseRequest <= 1'b0;
+					if(EX_uartOp_i == `MEM_SB && EX_addr_i == 32'hBFD003F8) begin
+						nstate <= WRITE;
+					end else if(EX_uartOp_i == `MEM_LB && EX_addr_i == 32'hBFD003F8) begin
+						nstate <= READ;
 					end else begin
-						rdn <= 1'b1;
-						nstate <= READ1;
-					end 
-					
-				end
-				
-				READ3: begin
-					rdn <= 1'b1;
-					wrn <= 1'b1;
-					
-					pauseRequest <= 1'b1;
-					loadData_o <= {{24{data_io[7]}}, data_io[7:0]};
-					nstate <= INIT;
-					
+						nstate <= IDLE;
+					end
 				end
 				
 				default: begin
-					wrn <= 1'b1;
-					rdn <= 1'b1;
+					nstate <= IDLE;
 					pauseRequest <= 1'b0;
 					loadData_o <= 32'b0;
-					
-					nstate <= INIT;
-					
+					ext_uart_start <= 1'b0;
+					ext_uart_clear <= 1'b0;
+					ext_uart_tx <= 8'b0;
 				end
-			
 			endcase
 		end
 	end
-
+	
+	async_receiver #(.ClkFrequency(50000000),.Baud(9600))
+		ext_uart_r(
+			.clk(clk),                       
+			.RxD(rxd),                           
+			.RxD_data_ready(ext_uart_ready), 
+			.RxD_clear(ext_uart_clear),       
+			.RxD_data(ext_uart_rx)             
+		);
+	
+	async_transmitter #(.ClkFrequency(50000000),.Baud(9600)) 
+		ext_uart_t(
+			.clk(clk),                  
+			.TxD(txd),                      
+			.TxD_busy(ext_uart_busy),      
+			.TxD_start(ext_uart_start),    
+			.TxD_data(ext_uart_tx)       
+		);
+		
 endmodule

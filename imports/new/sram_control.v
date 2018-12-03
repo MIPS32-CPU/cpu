@@ -11,7 +11,6 @@ module sram_control (
 	
 	input wire [3:0] EX_ramOp_i,
 	input wire [31:0] EX_ramAddr_i,
-	input wire [3:0] MEM_ramAddr_i,
 	input wire EX_tlbmiss_i,
 	
 	output reg [31:0] loadInst_o,
@@ -24,15 +23,14 @@ module sram_control (
 	output reg [19:0] dataAddr_o,
 	output reg pauseRequest,
 	
-	output wire [31:0] data_o,
 	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
 );
 	
 
-	wire write, load, now_write, now_load;
-	wire base_read, base_write, ext_read, ext_write, now_base_read, now_base_write, now_ext_write, now_ext_read;
-	wire base, ext, now_base, now_ext;
+	wire write, load;
+	wire base_read, base_write, ext_read, ext_write;
+	wire base, ext;
 	wire addressError;
 	assign addressError = (EX_ramOp_i == `MEM_LW) && (EX_ramAddr_i[1:0] != 2'b0) ||
 						  (EX_ramOp_i == `MEM_LH) && (EX_ramAddr_i[0] != 1'b0) ||
@@ -42,22 +40,13 @@ module sram_control (
 	
 	assign write = ((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
 	assign load = (write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
-	//assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000);
-	assign base = 1'b0;
+	assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000);
+	//assign base = 1'b0;
 	assign ext = ~base;
 	assign base_read = load && base;
 	assign base_write = write && base; 
 	assign ext_read = load && ext;
 	assign ext_write = write && ext;
-	
-	/*assign now_write = (ramOp_i == `MEM_SW || ramOp_i == `MEM_SH || ramOp_i == `MEM_SB) ? 1'b1 : 1'b0;
-	assign now_load = (now_write == 0 && ramOp_i != `MEM_NOP) ? 1'b1 : 1'b0;
-	assign now_base = (MEM_ramAddr_i < 32'h80400000) & (MEM_ramAddr_i >= 32'h80000000);
-	assign now_ext = ~now_base;
-	assign now_base_read = now_load && now_base;
-	assign now_base_write = now_write && base; 
-	assign now_ext_read = now_load && now_ext;
-	assign now_ext_write = now_write && now_ext;*/
 	
 	
 	reg [2:0] state, nstate, pstate;	
@@ -71,7 +60,7 @@ module sram_control (
 			  READ_EXT = 4'd6,
 			  READ_BASE_END = 4'd7;
 			  
-	assign data_o = (ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz));
+	assign data_io = (ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz));
 	assign inst_io = (state != WRITE_BASE && state != WRITE_BASE_HOLD) ? 32'bz : ((ramOp_i == `MEM_SW) ? storeData_i : ((ramOp_i == `MEM_SH) ? {2{storeData_i[15:0]}} : ((ramOp_i == `MEM_SB) ? {4{storeData_i[7:0]}} : 32'bz)));
 		  
 	always @(posedge clk) begin

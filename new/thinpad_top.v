@@ -108,11 +108,8 @@ CPU CPU0(
 	.dpy0_o(tmp0),
 	.dpy1_o(tmp1),
 	
-	.tbre(uart_tbre),
-	.tsre(uart_tsre),
-	.data_ready(uart_dataready),
-	.rdn(uart_rdn),
-	.wrn(uart_wrn)
+	.rxd(rxd),
+	.txd(txd)
 );
 
 SEG7_LUT s0(
