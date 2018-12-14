@@ -109,7 +109,15 @@ CPU CPU0(
 	.dpy1_o(tmp1),
 	
 	.rxd(rxd),
-	.txd(txd)
+	.txd(txd),
+	
+	.video_red(video_red),
+	.video_green(video_green),
+	.video_blue(video_blue),
+	.video_hsync(video_hsync),
+	.video_vsync(video_vsync),
+	.video_clk(video_clk),
+	.video_de(video_de)
 );
 
 SEG7_LUT s0(
