@@ -632,22 +632,16 @@ module CPU(
 	  		.writeReady(uart_writeReady)
 	  );
 	  
-	  //图像输出演示，分辨率800x600@75Hz，像素时钟为50MHz
-      wire [11:0] hdata;
-      assign video_red = hdata < 266 ? 3'b111 : 0; //红色竖条
-      assign video_green = hdata < 532 && hdata >= 266 ? 3'b111 : 0; //绿色竖条
-      assign video_blue = hdata >= 532 ? 2'b11 : 0; //蓝色竖条
-      assign video_clk = clk;
-      vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75 (
-          .clk(clk), 
-          .hdata(hdata), //横坐标
-          .vdata(),      //纵坐标
-          .hsync(video_hsync),
-          .vsync(video_vsync),
-          .data_enable(video_de)
-      );
+	  vga_control vga(
+	      .clk(clk),
+	      .rst(rst),
+	      .video_red(video_red),
+	      .video_green(video_green),
+	      .video_blue(video_blue),
+	      .video_hsync(video_hsync),
+	      .video_vsync(video_vsync),
+	      .video_clk(video_clk),
+	      .video_de(video_de)
+	  );
 	  
 endmodule
-    
-    
-    
