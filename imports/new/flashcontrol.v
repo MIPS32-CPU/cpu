@@ -50,7 +50,6 @@ module flashcontrol(
 						  (EX_ramOp_i == `MEM_LHU) && (EX_ramAddr_i[0] != 1'b0);
 	assign load = (EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
 	assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000);
-	//assign base = 1'b0;
 	assign ext = ~base;
 	assign base_read = load && base; 
 	assign ext_read = load && ext;
@@ -119,7 +118,7 @@ module flashcontrol(
                         writeData_o <= 16'h00FF;//change to read mode
                         flashEnable_o <= 1'b0;//flash enable
                         writeEnable_o <= 1'b0;//writeEnable reset
-                        busEnable_o <= 1'b1;
+                        busEnable_o <= 1'b0;
                         readEnable_o <= 1'b1;
                         pauseRequest_o <= 1'b0;     
                         
@@ -132,7 +131,7 @@ module flashcontrol(
                         writeData_o <= 16'h00FF;//keep
                         flashEnable_o <= 1'b0;//flash enable
                         writeEnable_o <= 1'b1;//writeEnable set
-                        busEnable_o <= 1'b1;
+                        busEnable_o <= 1'b0;
                         readEnable_o <= 1'b1;
                         pauseRequest_o <= 1'b0;     
                         
@@ -145,7 +144,7 @@ module flashcontrol(
                         writeData_o <= 16'bz;//prepare to read
                         flashEnable_o <= 1'b0;//flash enable
                         writeEnable_o <= 1'b1;
-                        busEnable_o <= 1'b1;
+                        busEnable_o <= 1'b0;
                         readEnable_o <= 1'b0;//readEnable reset
                         pauseRequest_o <= 1'b1;//wait    
                         case(ramOp_i) 
@@ -185,7 +184,7 @@ module flashcontrol(
                         ramAddr_o <= ramAddr_i;
                         flashEnable_o <= 1'b0;//flash enable
                         writeEnable_o <= 1'b1;
-                        busEnable_o <= 1'b1;
+                        busEnable_o <= 1'b0;
                         readEnable_o <= 1'b1;//readEnable set
                         pauseRequest_o <= 1'b1;//wait    
                         
