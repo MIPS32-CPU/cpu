@@ -35,14 +35,14 @@ module vga_control(
       .vsync(video_vsync),
       .data_enable(video_de)
     );
-
+    
     reg ena;
     reg[0:0] wea;
     reg[18:0] addra;
     reg[7:0] dina;
     wire[7:0] douta;
     
-    blk_mem_gen_0 your_instance_name (
+    blk_mem_gen_0 video_memory (
       .clka(clk),    // input wire clka
       .ena(ena),      // input wire ena
       .wea(wea),      // input wire [0 : 0] wea
@@ -57,16 +57,26 @@ module vga_control(
             green = 3'b0;
             blue = 2'b0;
         end
-        else begin
+        else if (hdata < 800 && vdata < 600) begin
             red = douta[7:5];
             green = douta[4:2];
             blue = douta[1:0];
+        end
+        else begin
+            red = 3'b0;
+            green = 3'b0;
+            blue = 2'b0;
         end
     end
     
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
             ena <= 1'b0;
+            wea <= 1'b0;
+            dina <= 8'b0;
+        end
+        else if (vdata < 300) begin
+            ena <= 1'b1;
             wea <= 1'b0;
             dina <= 8'b0;
         end
@@ -78,9 +88,11 @@ module vga_control(
     end
     
     wire[11:0] hh;
+    wire[11:0] vv0;
     wire[11:0] vv;
     assign hh = (hdata == 1039) ? 0 : hdata + 1;
-    assign vv = (hdata == 1039) ? vdata + 1: vdata;
+    assign vv0 = (hdata == 1039) ? vdata + 1: vdata;
+    assign vv = (vv0 == 666)? 0 : vv0;
     
     reg good;
     
@@ -101,7 +113,12 @@ module vga_control(
         end
         else begin
             if (hh < 800 && vv < 600) begin
-                addra <= addra + 1;
+                if (addra < 480000) begin
+                    addra <= addra + 1;
+                end
+                else begin
+                    addra <= 1;
+                end
             end
             else begin
                 addra <= addra;

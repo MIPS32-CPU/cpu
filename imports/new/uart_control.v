@@ -120,6 +120,7 @@ module uart_control(
 				end
 				
 				WRITE: begin
+				    ext_uart_clear <= 1'b0;
 					loadData_o <= 32'h33;
 					pauseRequest <= 1'b1;
 					if(~ext_uart_busy) begin		
@@ -134,6 +135,7 @@ module uart_control(
 				end
 				
 				WRITE_HOLD: begin
+				    ext_uart_clear <= 1'b0;
 					loadData_o <= 32'h34;
 					ext_uart_tx <= storeData[7:0];
 					ext_uart_start <= 1'b0;
