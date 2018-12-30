@@ -40,15 +40,21 @@ module vga_control(
     reg[0:0] wea;
     reg[18:0] addra;
     reg[7:0] dina;
-    wire[7:0] douta;
+    reg enb;
+    reg[18:0] addrb;
+    wire[7:0] doutb;
     
-    blk_mem_gen_0 video_memory (
+blk_mem_gen_0 your_instance_name (
       .clka(clk),    // input wire clka
       .ena(ena),      // input wire ena
       .wea(wea),      // input wire [0 : 0] wea
       .addra(addra),  // input wire [18 : 0] addra
       .dina(dina),    // input wire [7 : 0] dina
-      .douta(douta)  // output wire [7 : 0] douta
+      
+      .clkb(clk),    // input wire clkb
+      .enb(enb),      // input wire enb
+      .addrb(addrb),  // input wire [18 : 0] addrb
+      .doutb(doutb)  // output wire [7 : 0] doutb
     );
     
     always @ (posedge clk) begin
@@ -58,9 +64,9 @@ module vga_control(
             blue = 2'b0;
         end
         else if (hdata < 800 && vdata < 600) begin
-            red = douta[7:5];
-            green = douta[4:2];
-            blue = douta[1:0];
+            red = doutb[7:5];
+            green = doutb[4:2];
+            blue = doutb[1:0];
         end
         else begin
             red = 3'b0;
@@ -72,18 +78,18 @@ module vga_control(
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
             ena <= 1'b0;
-            wea <= 1'b0;
-            dina <= 8'b0;
-        end
-        else if (vdata < 300) begin
-            ena <= 1'b1;
-            wea <= 1'b0;
-            dina <= 8'b0;
         end
         else begin
             ena <= 1'b1;
-            wea <= 1'b0;
-            dina <= 8'b0;
+        end
+    end
+    
+    always @ (posedge clk) begin
+        if (rst == 1'b1) begin
+            enb <= 1'b0;
+        end
+        else begin
+            enb <= 1'b1;
         end
     end
     
@@ -94,34 +100,56 @@ module vga_control(
     assign vv0 = (hdata == 1039) ? vdata + 1: vdata;
     assign vv = (vv0 == 666)? 0 : vv0;
     
+    reg[18:0] temp;
+    
+    always @ (posedge clk) begin
+        if (rst == 1'b1) begin
+            wea <= 1'b0;
+            addra <= 19'b0;
+            dina <= 8'b0;
+            temp <= 19'b0;
+        end
+        else begin
+            wea <= 1'b1;
+            addra <= temp;
+            dina <= 8'b11100000;
+            if (temp < 40000) begin
+                temp <= temp + 1;
+            end
+            else begin
+                temp <= 1;
+            end
+        end
+    end
+    
     reg good;
     
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
-            addra <= 1'b0;
+            addrb <= 19'b0;
             good <= 1'b0;
         end
         else if (good == 1'b0) begin
             if (hh < 800 && vv < 600) begin
                 good <= 1'b1;
-                addra <= vv * 800 + hh + 2;
+                addrb <= vv * 800 + hh + 2;
             end
             else begin
                 good <= 1'b0;
-                addra <= 1'b0;
+                addrb <= 19'b0;
             end
         end
         else begin
             if (hh < 800 && vv < 600) begin
-                if (addra < 480000) begin
-                    addra <= addra + 1;
+                if (addrb < 480000) begin
+                    addrb <= addrb + 1;
                 end
                 else begin
-                    addra <= 1;
+                    addrb <= 1;
                 end
             end
             else begin
-                addra <= addra;
+                addrb <= addrb;
             end
         end
     end
