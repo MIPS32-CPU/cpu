@@ -21,7 +21,11 @@ module pc(
 		if(rst == 1'b1) begin
 			pc_o <= 32'h80000000;
 		end else if(flush == 1'b1) begin
-			pc_o <= exceptionHandleAddr_i;
+			if(exceptionHandleAddr_i >= 32'h80000000) begin
+				pc_o <= exceptionHandleAddr_i;
+			end else begin
+				pc_o <= exceptionHandleAddr_i + 32'h80000000;
+			end
 		end else if(stall[0] == 1'b0) begin
 			if(branchEnable_i == 1'b1) begin
 				pc_o <= branchAddr_i;

@@ -146,12 +146,11 @@ module MEM(
 		if(rst == 1'b1) begin
 			exceptionType_o <= 32'b0;
 		end else begin
-			/*if((cause[15:8] & cause[15:8] != 8'b0) 
+			if((status[12] & cause[12] == 1'b1) 
 			&& (status[1] == 1'b0) 
 			&& (status[0] == 1'b1)) begin
 				exceptionType_o <= 32'h00000001;
-			end else*/ 
-			if(addressError == 1'b1) begin
+			end else if(addressError == 1'b1) begin
 				if(ramOp_i == `MEM_LW ||  ramOp_i == `MEM_LH ||
 				   ramOp_i == `MEM_LHU) begin
 					exceptionType_o <= 32'h4;

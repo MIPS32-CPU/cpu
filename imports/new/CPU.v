@@ -510,7 +510,7 @@ module CPU(
 			.writeAddr_i(MEM_WB_write_CP0_addr_o),
 			.writeData_i(MEM_WB_LO_data_o),
 			.readAddr_i(ID_read_CP0_addr_o),
-			.int_i(6'b0),
+			.int_i({3'b0, uart_dataReady, 2'b0}),
 			.exceptionAddr_i(MEM_pc_o),
 			.exceptionType_i(MEM_exceptionType_o),
 			.in_delay_slot_i(MEM_in_delay_slot_o),
@@ -607,21 +607,21 @@ module CPU(
 	    	.writeReady(uart_writeReady)
 	    );
 	    
-	  uart_control uart_control0(
-	  		.clk(clk),
-	  		.rst(rst),
-	  		.rxd(rxd),
-	  		.storeData(MMU_uart_storeData_o),
-	  		.EX_uartOp_i(EX_ramOp_o),
-	  		.EX_addr_i(EX_LO_data_o),
-	  		.uartOp_i(MMU_uartOp_o),
-	  		
-	  		.txd(uart_txd),
-	  		.loadData_o(uart_loadData_o),
-	  		.dataReady(uart_dataReady),
-	  		.pauseRequest(uart_pause_o),
-	  		.writeReady(uart_writeReady)
-	  );
+		  uart_control uart_control0(
+				.clk(clk),
+				.rst(rst),
+				.rxd(rxd),
+				.storeData(MMU_uart_storeData_o),
+				.EX_uartOp_i(EX_ramOp_o),
+				.EX_addr_i(EX_LO_data_o),
+				.uartOp_i(MMU_uartOp_o),
+				
+				.txd(uart_txd),
+				.loadData_o(uart_loadData_o),
+				.dataReady(uart_dataReady),
+				.pauseRequest(uart_pause_o),
+				.writeReady(uart_writeReady)
+		  );
 endmodule
     
     
