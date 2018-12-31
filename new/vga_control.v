@@ -9,8 +9,14 @@ module vga_control(
     output wire video_hsync,
     output wire video_vsync,
     output wire video_clk,
-    output wire video_de
-    );
+    output wire video_de,
+    
+    
+    output reg vga_re,
+    output reg [22:0] vga_addr,
+    input wire [15:0] vga_data,
+    input wire vga_success
+);
     
     //图像输出演示，分辨率800x600@75Hz，像素时钟为50MHz
     wire [11:0] hdata;
@@ -75,20 +81,14 @@ blk_mem_gen_0 your_instance_name (
         end
     end
     
-    always @ (posedge clk) begin
-        if (rst == 1'b1) begin
-            ena <= 1'b0;
-        end
-        else begin
-            ena <= 1'b1;
-        end
-    end
     
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
+            ena <= 1'b0;
             enb <= 1'b0;
         end
         else begin
+            ena <= 1'b1;
             enb <= 1'b1;
         end
     end
@@ -100,56 +100,85 @@ blk_mem_gen_0 your_instance_name (
     assign vv0 = (hdata == 1039) ? vdata + 1: vdata;
     assign vv = (vv0 == 666)? 0 : vv0;
     
-    reg[18:0] temp;
-    
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
-            wea <= 1'b0;
-            addra <= 19'b0;
-            dina <= 8'b0;
-            temp <= 19'b0;
+            addrb <= 19'b0;
         end
         else begin
-            wea <= 1'b1;
-            addra <= temp;
-            dina <= 8'b11100000;
-            if (temp < 40000) begin
-                temp <= temp + 1;
+            if (hh < 800 && vv < 600) begin
+                addrb <= vv * 800 + hh + 2;
             end
             else begin
-                temp <= 1;
+                addrb <= 19'b0;
             end
         end
     end
     
-    reg good;
+    reg init_end;
+    reg write1, write2;
     
-    always @ (posedge clk) begin
+    always @(posedge clk) begin
         if (rst == 1'b1) begin
-            addrb <= 19'b0;
-            good <= 1'b0;
+            init_end <= 1'b0;
+            wea <= 1'b0;
+            addra <= 19'b1;
+            dina <= 8'b0;
+            vga_re <= 1'b0;
+            vga_addr <= 23'b0;
+            write1 <= 1'b0;
+            write2 <= 1'b0;
         end
-        else if (good == 1'b0) begin
-            if (hh < 800 && vv < 600) begin
-                good <= 1'b1;
-                addrb <= vv * 800 + hh + 2;
-            end
-            else begin
-                good <= 1'b0;
-                addrb <= 19'b0;
-            end
+        else if (init_end == 1'b1) begin
+            init_end <= 1'b1;
+            wea <= 1'b0;
+            addra <= 19'b0;
+            dina <= 8'b0;
+            vga_re <= 1'b0;
+            vga_addr <= 23'b0;
+            write1 <= 1'b0;
+            write2 <= 1'b0;
         end
         else begin
-            if (hh < 800 && vv < 600) begin
-                if (addrb < 480000) begin
-                    addrb <= addrb + 1;
+            if (vga_addr == 480000) begin
+                init_end <= 1'b1;
+            end
+            else begin
+                init_end <= 1'b0;
+            end
+            vga_re <= 1'b1;
+            if (vga_success == 1'b1) begin
+                if (write1 == 1'b0) begin
+                    wea <= 1'b1;
+                    write1 <= 1'b1;
+                    write2 <= 1'b0;
+                    addra <= addra + 1;
+                    vga_addr <= vga_addr + 2;
+                    dina <= vga_data[7:0];
+                end
+                else if (write2 == 1'b0) begin
+                    wea <= 1'b1;
+                    write1 <= 1'b1;
+                    write2 <= 1'b1;
+                    addra <= addra + 1;
+                    vga_addr <= vga_addr;
+                    dina <= vga_data[15:8];
                 end
                 else begin
-                    addrb <= 1;
+                    wea <= 1'b0;
+                    write1 <= 1'b1;
+                    write2 <= 1'b1;
+                    addra <= addra;
+                    vga_addr <= vga_addr;
+                    dina <= 8'b0;
                 end
             end
             else begin
-                addrb <= addrb;
+                wea <= 1'b0;
+                write1 <= 1'b0;
+                write2 <= 1'b0;
+                addra <= addra;
+                vga_addr <= vga_addr;
+                dina <= dina;
             end
         end
     end

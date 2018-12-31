@@ -6,6 +6,7 @@ In fact, one wire can link two ends.
 
 module CPU(
     input wire clk,
+    input wire clk_10M,
     input wire rst,
     input wire rxd,
     
@@ -36,6 +37,18 @@ module CPU(
     output wire video_vsync,
     output wire video_clk,
     output wire video_de,
+    
+    
+    // flash
+    output wire [22:0] flash_a,
+    inout wire [15:0] flash_d,
+    output wire flash_rp_n,
+    output wire flash_vpen,
+    output wire flash_ce_n,
+    output wire flash_oe_n,
+    output wire flash_we_n,
+    output wire flash_byte_n,
+    
 	
 	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
@@ -632,16 +645,65 @@ module CPU(
 	  		.writeReady(uart_writeReady)
 	  );
 	  
+	  wire vga_re;
+	  wire [22:0] vga_addr;
+	  wire [15:0] vga_data;
+	  wire vga_success;
+	  
+	  /*flash_control flash(
+	       .clk(clk),
+	       .rst(rst),
+	       
+	       .vga_re(vga_re),
+	       .vga_addr(vga_addr),
+	       .vga_data(vga_data),
+	       .vga_success(vga_success),
+	       
+	       .flash_a(flash_a),
+	       .flash_d(flash_d),
+	       .flash_rp_n(flash_rp_n),
+	       .flash_vpen(flash_vpen),
+	       .flash_ce_n(flash_ce_n),
+	       .flash_oe_n(flash_oe_n),
+	       .flash_we_n(flash_we_n),
+	       .flash_byte_n(flash_byte_n)
+	  );*/
+	  
+	  flash0 flash(
+	       .clk(clk_10M),
+	       .reset(rst),
+	       
+	       .addr(vga_addr),
+	       .ctl_read(vga_re),
+	       .data_out(vga_data),
+	       .success(vga_success),
+	       
+	       .flash_addr(flash_a),
+          .flash_data(flash_d),
+          .flash_rp(flash_rp_n),
+          .flash_vpen(flash_vpen),
+          .flash_ce(flash_ce_n),
+          .flash_oe(flash_oe_n),
+          .flash_we(flash_we_n),
+          .flash_byte(flash_byte_n)
+	  );
+	  
 	  vga_control vga(
 	      .clk(clk),
 	      .rst(rst),
+	      
 	      .video_red(video_red),
 	      .video_green(video_green),
 	      .video_blue(video_blue),
 	      .video_hsync(video_hsync),
 	      .video_vsync(video_vsync),
 	      .video_clk(video_clk),
-	      .video_de(video_de)
+	      .video_de(video_de),
+	      
+	      .vga_re(vga_re),
+	      .vga_addr(vga_addr),
+	      .vga_data(vga_data),
+	      .vga_success(vga_success)
 	  );
 	  
 endmodule

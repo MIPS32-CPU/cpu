@@ -85,6 +85,7 @@ wire[3:0] tmp1;
 
 CPU CPU0(
 	.clk(clk_50M),
+	.clk_10M(clk_11M0592),
     .rst(reset_btn),
     
     
@@ -117,7 +118,16 @@ CPU CPU0(
 	.video_hsync(video_hsync),
 	.video_vsync(video_vsync),
 	.video_clk(video_clk),
-	.video_de(video_de)
+	.video_de(video_de),
+	
+    .flash_a(flash_a),
+    .flash_d(flash_d),
+    .flash_rp_n(flash_rp_n),
+    .flash_vpen(flash_vpen),
+    .flash_ce_n(flash_ce_n),
+    .flash_oe_n(flash_oe_n),
+    .flash_we_n(flash_we_n),
+    .flash_byte_n(flash_byte_n)
 );
 
 SEG7_LUT s0(
