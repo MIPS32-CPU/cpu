@@ -6,7 +6,7 @@ In fact, one wire can link two ends.
 
 module CPU(
     input wire clk,
-    input wire clk_10M,
+    input wire clk_11M,
     input wire rst,
     input wire rxd,
     
@@ -668,6 +668,37 @@ module CPU(
 	       .flash_we_n(flash_we_n),
 	       .flash_byte_n(flash_byte_n)
 	  );*/
+	  
+	  reg clk_10M;
+	  reg[3:0] temp;
+	  
+	  always @(posedge clk) begin
+	       if (rst == 1'b1) begin
+	           temp <= 4'b0;
+	       end
+	       else begin
+               if (temp == 2) begin
+                   temp <= 0;
+               end
+               else begin
+                   temp <= temp+1;
+               end
+           end
+	  end
+	  
+	  always @(posedge clk) begin
+	       if (rst == 1'b1) begin
+	           clk_10M <= 1'b0;
+	       end
+	       else begin
+                if (temp == 0) begin
+                    clk_10M <= ~clk_10M;
+                end
+                else begin
+                    clk_10M <= clk_10M;
+                end
+	       end
+	  end
 	  
 	  flash0 flash(
 	       .clk(clk_10M),

@@ -131,7 +131,7 @@ blk_mem_gen_0 your_instance_name (
         else if (init_end == 1'b1) begin
             init_end <= 1'b1;
             wea <= 1'b0;
-            addra <= 19'b0;
+            addra <= 19'b1;
             dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;

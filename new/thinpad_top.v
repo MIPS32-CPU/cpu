@@ -85,7 +85,7 @@ wire[3:0] tmp1;
 
 CPU CPU0(
 	.clk(clk_50M),
-	.clk_10M(clk_11M0592),
+	.clk_11M(clk_11M0592),
     .rst(reset_btn),
     
     
