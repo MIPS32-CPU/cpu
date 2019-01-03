@@ -28,9 +28,9 @@ module vga_control(
     assign video_red = red;
     assign video_green = green;
     assign video_blue = blue;
-    // assign video_red = hdata < 266 ? 3'b111 : 0; //红色竖条
-    // assign video_green = hdata < 532 && hdata >= 266 ? 3'b111 : 0; //绿色竖条
-    // assign video_blue = hdata >= 532 ? 2'b11 : 0; //蓝色竖条
+     //assign video_red = hdata < 266 ? 3'b111 : 0; //红色竖条
+     //assign video_green = hdata < 532 && hdata >= 266 ? 3'b111 : 0; //绿色竖条
+     //assign video_blue = hdata >= 532 ? 2'b11 : 0; //蓝色竖条
     assign video_clk = clk;
     
     vga #(12, 800, 856, 976, 1040, 600, 637, 643, 666, 1, 1) vga800x600at75 (
@@ -102,14 +102,14 @@ blk_mem_gen_0 your_instance_name (
     
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
-            addrb <= 19'b0;
+            addrb <= 10;
         end
         else begin
             if (hh < 800 && vv < 600) begin
-                addrb <= vv * 800 + hh + 2;
+                addrb <= vv * 800 + hh + 10;
             end
             else begin
-                addrb <= 19'b0;
+                addrb <= 10;
             end
         end
     end
@@ -121,7 +121,7 @@ blk_mem_gen_0 your_instance_name (
         if (rst == 1'b1) begin
             init_end <= 1'b0;
             wea <= 1'b0;
-            addra <= 19'b1;
+            addra <= 9;
             dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
@@ -131,7 +131,7 @@ blk_mem_gen_0 your_instance_name (
         else if (init_end == 1'b1) begin
             init_end <= 1'b1;
             wea <= 1'b0;
-            addra <= 19'b1;
+            addra <= 9;
             dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
