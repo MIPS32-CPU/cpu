@@ -111,7 +111,12 @@ blk_mem_gen_0 your_instance_name (
         end
         else begin
             if (hh < 800 && vv < 600) begin
-                addrb <= (vv >> 3) * 100 + (hh >> 3) + 1;
+                if (img_show) begin
+                    addrb <= vv * 800 + hh + 1;
+                end
+                else begin
+                    addrb <= (vv >> 3) * 100 + (hh >> 3) + 1;
+                end
             end
             else begin
                 addrb <= 1;
@@ -126,7 +131,7 @@ blk_mem_gen_0 your_instance_name (
         if (rst == 1'b1) begin
             init_end <= 1'b0;
             wea <= 1'b0;
-            addra <= 9;
+            addra <= 0;
             dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
@@ -142,7 +147,7 @@ blk_mem_gen_0 your_instance_name (
             end
             else begin
                 wea <= 1'b0;
-                addra <= 9;
+                addra <= 0;
                 dina <= 8'b0;
             end
             vga_re <= 1'b0;
@@ -153,7 +158,7 @@ blk_mem_gen_0 your_instance_name (
         else if (init_end == 1'b1) begin
             init_end <= 1'b1;
             wea <= 1'b0;
-            addra <= 9;
+            addra <= 0;
             dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
