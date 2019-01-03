@@ -11,12 +11,12 @@ module vga_control(
     output wire video_clk,
     output wire video_de,
     
+    input wire img_show,
     
     output reg vga_re,
     output reg [22:0] vga_addr,
     input wire [15:0] vga_data,
     input wire vga_success,
-    
     
     input wire write_enable,
     input wire [18:0] write_address,
@@ -124,7 +124,7 @@ blk_mem_gen_0 your_instance_name (
     
     always @(posedge clk) begin
         if (rst == 1'b1) begin
-            init_end <= 1'b1;
+            init_end <= 1'b0;
             wea <= 1'b0;
             addra <= 9;
             dina <= 8'b0;
@@ -133,8 +133,8 @@ blk_mem_gen_0 your_instance_name (
             write1 <= 1'b0;
             write2 <= 1'b0;
         end
-        else if (init_end == 1'b1) begin
-            init_end <= 1'b1;
+        else if (img_show == 1'b0) begin
+            init_end <= 1'b0;
             if (write_enable == 1'b1) begin
                 wea <= 1'b1;
                 addra <= write_address;
@@ -145,6 +145,16 @@ blk_mem_gen_0 your_instance_name (
                 addra <= 9;
                 dina <= 8'b0;
             end
+            vga_re <= 1'b0;
+            vga_addr <= 23'b0;
+            write1 <= 1'b0;
+            write2 <= 1'b0;
+        end
+        else if (init_end == 1'b1) begin
+            init_end <= 1'b1;
+            wea <= 1'b0;
+            addra <= 9;
+            dina <= 8'b0;
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
             write1 <= 1'b0;

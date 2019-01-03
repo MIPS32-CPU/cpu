@@ -11,6 +11,8 @@ module CPU(
     input wire rxd,
     input wire [3:0] btn, 
     
+    input wire [31:0] dip_sw,
+    
     output wire [19:0] instAddr_o,
 	output wire [19:0] dataAddr_o,
 	
@@ -784,6 +786,9 @@ module CPU(
           .flash_byte(flash_byte_n)
 	  );
 	  
+	  wire img_show;
+	  assign img_show = dip_sw[0];
+	  
 	  vga_control vga(
 	      .clk(clk),
 	      .rst(rst),
@@ -795,6 +800,8 @@ module CPU(
 	      .video_vsync(video_vsync),
 	      .video_clk(video_clk),
 	      .video_de(video_de),
+	      
+	      .img_show(img_show),
 	      
 	      .vga_re(vga_re),
 	      .vga_addr(vga_addr),

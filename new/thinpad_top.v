@@ -89,6 +89,8 @@ CPU CPU0(
     .rst(reset_btn),
     .btn(touch_btn),
     
+    .dip_sw(dip_sw),
+    
     
     .instAddr_o(ext_ram_addr),
 	.dataAddr_o(base_ram_addr),
