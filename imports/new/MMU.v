@@ -36,7 +36,11 @@ module MMU(
 	
 	output reg vga_we,
 	output reg [18:0] vga_addr,
-	output reg [7:0] vga_data
+	output reg [7:0] vga_data,
+	
+	output reg vga_read_enable,
+	output reg [18:0] vga_read_addr,
+	input wire [7:0] vga_read_data
 );
 
 	wire [18:0] vpn2 = entryhi_i[31:13];
@@ -103,6 +107,8 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
+            vga_read_enable <= 1'b0;
+            vga_read_addr <= 0;
 			
 		end else if(data_ramAddr_i < 32'h80000000) begin
 			uart_enable <= 1'b0;
@@ -287,6 +293,8 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
+            vga_read_enable <= 1'b0;
+            vga_read_addr <= 0;
 		end else if(data_ramAddr_i == 32'hBFD003F8) begin
 			uart_enable <= 1'b1;
 			uartOp_o <= ramOp_i;
@@ -301,6 +309,8 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
+            vga_read_enable <= 1'b0;
+            vga_read_addr <= 0;
 		end else if(data_ramAddr_i == 32'hBFD003FC) begin
 			/*if(dataReady == 1'b1) begin
 				load_data_o <= 32'h00000002;
@@ -322,7 +332,9 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
-		end else if(data_ramAddr_i >= 32'h90000000) begin
+            vga_read_enable <= 1'b0;
+             vga_read_addr <= 0;
+		end else if(data_ramAddr_i >= 32'h90000000 && ramOp_i == `MEM_SB) begin
 		    uartOp_o <= `MEM_NOP;
             uart_storeData_o <= 32'b0;
             ramOp_o <= `MEM_NOP;
@@ -332,16 +344,29 @@ module MMU(
             tlbmiss_reg <= 1'b0;
             uart_enable <= 1'b0;
             load_data_o <= 32'b0;
-            if (ramOp_i == `MEM_SB) begin
-                vga_we <= 1'b1;
-                if (data_ramAddr_i[18:0]>7501) begin
-                    vga_addr <= 1;
-                end
-                else begin
-                    vga_addr <= data_ramAddr_i[18:0]+1;
-                end
-                vga_data <= storeData_i[7:0];
+            vga_we <= 1'b1;
+            if (data_ramAddr_i[18:0]>7501) begin
+                vga_addr <= 1;
             end
+            else begin
+                vga_addr <= data_ramAddr_i[18:0]+1;
+            end
+            vga_data <= storeData_i[7:0];
+		end else if (data_ramAddr_i >= 32'h90000000 && ramOp_i == `MEM_LB) begin
+		    uartOp_o <= `MEM_NOP;
+            uart_storeData_o <= 32'b0;
+            ramOp_o <= `MEM_NOP;
+            storeData_o <= 32'b0;
+            dataAddr_o <= 20'b0;
+            bytes_o <= 2'b0;
+            tlbmiss_reg <= 1'b0;
+            uart_enable <= 1'b0;
+            load_data_o <= {24'b0, vga_read_data};
+            vga_we <= 1'b0;
+            vga_addr <= data_ramAddr_i[18:0];
+            vga_data <= 8'b00000011;
+            vga_read_enable <= 1'b1;
+            vga_read_addr <= data_ramAddr_i[18:0];
 		end else begin
 			uartOp_o <= `MEM_NOP;
 			uart_storeData_o <= 32'b0;
@@ -355,6 +380,8 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
+            vga_read_enable <= 1'b0;
+            vga_read_addr <= 0;
 		end
 	end
 	

@@ -20,8 +20,16 @@ module vga_control(
     
     input wire write_enable,
     input wire [18:0] write_address,
-    input wire [7:0] write_data
+    input wire [7:0] write_data,
+    
+    input wire read_enable,
+    input wire [18:0] read_address,
+    output wire [7:0] read_data
 );
+
+    reg[7:0] rom[8000:0];
+    
+    assign read_data = (read_enable==1'b1 && rst==1'b0 && read_address<8000)?rom[read_address]:0;
     
     //Í¼ÏñÊä³öÑİÊ¾£¬·Ö±æÂÊ800x600@75Hz£¬ÏñËØÊ±ÖÓÎª50MHz
     wire [11:0] hdata;
@@ -139,10 +147,13 @@ blk_mem_gen_0 your_instance_name (
                 wea <= 1'b1;
                 addra <= write_address;
                 dina <= write_data;
+                if (write_address<8000) begin
+                    rom[write_address] <= write_data;
+                end
             end
             else begin
                 wea <= 1'b0;
-                addra <= 9;
+                addra <= 1;
                 dina <= 8'b0;
             end
             vga_re <= 1'b0;

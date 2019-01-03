@@ -1,4 +1,4 @@
-// (c) Copyright 1995-2018 Xilinx, Inc. All rights reserved.
+// (c) Copyright 1995-2019 Xilinx, Inc. All rights reserved.
 // 
 // This file contains confidential and proprietary information
 // of Xilinx, Inc. and is protected under U.S. and
@@ -115,7 +115,7 @@ output wire [7 : 0] doutb;
     .C_HAS_REGCEA(0),
     .C_USE_BYTE_WEA(0),
     .C_WEA_WIDTH(1),
-    .C_WRITE_MODE_A("WRITE_FIRST"),
+    .C_WRITE_MODE_A("NO_CHANGE"),
     .C_WRITE_WIDTH_A(8),
     .C_READ_WIDTH_A(8),
     .C_WRITE_DEPTH_A(490000),
@@ -159,7 +159,7 @@ output wire [7 : 0] doutb;
     .C_DISABLE_WARN_BHV_RANGE(0),
     .C_COUNT_36K_BRAM("120"),
     .C_COUNT_18K_BRAM("0"),
-    .C_EST_POWER_SUMMARY("Estimated Power for IP     :     4.862101 mW")
+    .C_EST_POWER_SUMMARY("Estimated Power for IP     :     4.534754 mW")
   ) inst (
     .clka(clka),
     .rsta(1'D0),

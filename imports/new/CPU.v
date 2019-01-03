@@ -191,6 +191,10 @@ module CPU(
     wire [18:0] MMU_vga_addr;
     wire [7:0] MMU_vga_data;
     
+    wire MMU_vga_read_enable;
+    wire [18:0] MMU_vga_read_addr;
+    wire [7:0] MMU_vga_read_data;
+    
     //uart control
 	wire [31:0] uart_loadData_o;
 	wire uart_pause_o;
@@ -691,7 +695,11 @@ module CPU(
 	    	
 	    	.vga_we(MMU_vga_we),
 	    	.vga_addr(MMU_vga_addr),
-	    	.vga_data(MMU_vga_data)
+	    	.vga_data(MMU_vga_data),
+	    	
+	    	.vga_read_enable(MMU_vga_read_enable),
+	    	.vga_read_addr(MMU_vga_read_addr),
+	    	.vga_read_data(MMU_vga_read_data)
 	    );
 	    
 	  uart_control uart_control0(
@@ -803,7 +811,11 @@ module CPU(
 	      
 	      .write_enable(MMU_vga_we),
 	      .write_address(MMU_vga_addr),
-	      .write_data(MMU_vga_data)
+	      .write_data(MMU_vga_data),
+	      
+	      .read_enable(MMU_vga_read_enable),
+	      .read_address(MMU_vga_read_addr),
+	      .read_data(MMU_vga_read_data)
 	  );
 	  
 endmodule
