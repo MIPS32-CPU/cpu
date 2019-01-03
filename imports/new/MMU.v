@@ -334,13 +334,13 @@ module MMU(
             load_data_o <= 32'b0;
             if (ramOp_i == `MEM_SB) begin
                 vga_we <= 1'b1;
-                if (data_ramAddr_i[18:0]>480000) begin
-                    vga_addr <= 10;
+                if (data_ramAddr_i[18:0]>7501) begin
+                    vga_addr <= 1;
                 end
                 else begin
-                    vga_addr <= data_ramAddr_i[18:0]+10;
+                    vga_addr <= data_ramAddr_i[18:0]+1;
                 end
-                vga_data <= 8'b00011100;
+                vga_data <= storeData_i[7:0];
             end
 		end else begin
 			uartOp_o <= `MEM_NOP;

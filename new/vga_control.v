@@ -107,14 +107,14 @@ blk_mem_gen_0 your_instance_name (
     
     always @ (posedge clk) begin
         if (rst == 1'b1) begin
-            addrb <= 10;
+            addrb <= 1;
         end
         else begin
             if (hh < 800 && vv < 600) begin
-                addrb <= vv * 800 + hh + 10;
+                addrb <= (vv >> 3) * 100 + (hh >> 3) + 1;
             end
             else begin
-                addrb <= 10;
+                addrb <= 1;
             end
         end
     end
