@@ -87,6 +87,7 @@ CPU CPU0(
 	.clk(clk_50M),
 	.clk_11M(clk_11M0592),
     .rst(reset_btn),
+    .btn(touch_btn),
     
     
     .instAddr_o(ext_ram_addr),

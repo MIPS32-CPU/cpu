@@ -9,6 +9,7 @@ module CPU(
     input wire clk_11M,
     input wire rst,
     input wire rxd,
+    input wire [3:0] btn, 
     
     output wire [19:0] instAddr_o,
 	output wire [19:0] dataAddr_o,
@@ -525,6 +526,61 @@ module CPU(
 	    	.tlbmiss_i(MMU_tlbmiss_o)
 	    );
 	    
+	    reg [3:0] btn_int;
+	    reg [3:0] pre_int;
+	    always@(posedge clk) begin
+	    	if(rst == 1'b1) begin
+	    		btn_int[3:0] <= 4'b0;
+	    		pre_int[3:0] <= 4'b0;
+	    	end else if(btn[3:0] == 4'b0) begin
+	    		btn_int[3:0] <= 4'b0;
+	    		pre_int[3:0] <= 4'b0;
+	    	end else if(pre_int[3:0] == 4'b0) begin
+	    		btn_int[3:0] <= btn[3:0];
+	    		pre_int[3:0] <= btn[3:0];
+	    	end else begin
+	    		btn_int[3:0] <= 4'b0;
+	    	end
+	    end
+	    
+	    /*always@(posedge btn[1]) begin
+			if(rst == 1'b1) begin
+				btn_int[1] <= 1'b0;
+				pre_int[1] <= 1'b0;
+			end else if(pre_int[1] == 1'b0) begin
+				btn_int[1] <= 1'b1;
+				pre_int[1] <= 1'b1;
+			end else begin
+				btn_int[1] <= 1'b0;
+				pre_int[1] <= 1'b0;
+			end
+		end
+	    
+	    always@(posedge btn[2]) begin
+			if(rst == 1'b1) begin
+				btn_int[2] <= 1'b0;
+				pre_int[2] <= 1'b0;
+			end else if(pre_int[2] == 1'b0) begin
+				btn_int[2] <= 1'b1;
+				pre_int[2] <= 1'b1;
+			end else begin
+				btn_int[2] <= 1'b0;
+				pre_int[2] <= 1'b0;
+			end
+		end
+	    	    	    
+	    always@(posedge btn[3]) begin
+			if(rst == 1'b1) begin
+				btn_int[3] <= 1'b0;
+				pre_int[3] <= 1'b0;
+			end else if(pre_int[3] == 1'b0) begin
+				btn_int[3] <= 1'b1;
+				pre_int[3] <= 1'b1;
+			end else begin
+				btn_int[3] <= 1'b0;
+				pre_int[3] <= 1'b0;
+			end
+		end	 */   	    
 	    CP0 CP0_0(
 			.clk(clk),
 			.rst(rst),
@@ -532,7 +588,7 @@ module CPU(
 			.writeAddr_i(MEM_WB_write_CP0_addr_o),
 			.writeData_i(MEM_WB_LO_data_o),
 			.readAddr_i(ID_read_CP0_addr_o),
-			.int_i({3'b0, uart_dataReady, 2'b0}),
+			.int_i({btn_int[3:1], uart_dataReady, btn_int[0] ,1'b0}),
 			.exceptionAddr_i(MEM_pc_o),
 			.exceptionType_i(MEM_exceptionType_o),
 			.in_delay_slot_i(MEM_in_delay_slot_o),
