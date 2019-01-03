@@ -186,6 +186,11 @@ module CPU(
     wire [3:0] MMU_uartOp_o;
     wire [31:0] MMU_uart_storeData_o;
     
+    
+    wire MMU_vga_we;
+    wire [18:0] MMU_vga_addr;
+    wire [7:0] MMU_vga_data;
+    
     //uart control
 	wire [31:0] uart_loadData_o;
 	wire uart_pause_o;
@@ -682,7 +687,11 @@ module CPU(
 	    	.uartOp_o(MMU_uartOp_o),
 	    	.uart_storeData_o(MMU_uart_storeData_o),
 	    	.dataReady(uart_dataReady),
-	    	.writeReady(uart_writeReady)
+	    	.writeReady(uart_writeReady),
+	    	
+	    	.vga_we(MMU_vga_we),
+	    	.vga_addr(MMU_vga_addr),
+	    	.vga_data(MMU_vga_data)
 	    );
 	    
 	  uart_control uart_control0(
@@ -790,7 +799,11 @@ module CPU(
 	      .vga_re(vga_re),
 	      .vga_addr(vga_addr),
 	      .vga_data(vga_data),
-	      .vga_success(vga_success)
+	      .vga_success(vga_success),
+	      
+	      .write_enable(MMU_vga_we),
+	      .write_address(MMU_vga_addr),
+	      .write_data(MMU_vga_data)
 	  );
 	  
 endmodule

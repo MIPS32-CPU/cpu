@@ -15,7 +15,12 @@ module vga_control(
     output reg vga_re,
     output reg [22:0] vga_addr,
     input wire [15:0] vga_data,
-    input wire vga_success
+    input wire vga_success,
+    
+    
+    input wire write_enable,
+    input wire [18:0] write_address,
+    input wire [7:0] write_data
 );
     
     //图像输出演示，分辨率800x600@75Hz，像素时钟为50MHz
@@ -119,7 +124,7 @@ blk_mem_gen_0 your_instance_name (
     
     always @(posedge clk) begin
         if (rst == 1'b1) begin
-            init_end <= 1'b0;
+            init_end <= 1'b1;
             wea <= 1'b0;
             addra <= 9;
             dina <= 8'b0;
@@ -130,9 +135,16 @@ blk_mem_gen_0 your_instance_name (
         end
         else if (init_end == 1'b1) begin
             init_end <= 1'b1;
-            wea <= 1'b0;
-            addra <= 9;
-            dina <= 8'b0;
+            if (write_enable == 1'b1) begin
+                wea <= 1'b1;
+                addra <= write_address;
+                dina <= write_data;
+            end
+            else begin
+                wea <= 1'b0;
+                addra <= 9;
+                dina <= 8'b0;
+            end
             vga_re <= 1'b0;
             vga_addr <= 23'b0;
             write1 <= 1'b0;
@@ -182,5 +194,6 @@ blk_mem_gen_0 your_instance_name (
             end
         end
     end
+    
     
 endmodule
