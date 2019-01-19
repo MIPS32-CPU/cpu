@@ -86,6 +86,7 @@ wire[3:0] tmp1;
 CPU CPU0(
 	.clk(clk_50M),
     .rst(reset_btn),
+    .btn(touch_btn),
     
     
     .instAddr_o(ext_ram_addr),

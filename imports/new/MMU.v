@@ -97,7 +97,7 @@ module MMU(
 			uart_enable <= 1'b0;
 			load_data_o <= 32'b0;
 			
-		end else if(data_ramAddr_i < 32'h80000000) begin
+		end else if((data_ramAddr_i >= 32'h7fc10000 && data_ramAddr_i < 32'h80000000) || data_ramAddr_i < 32'h00300000) begin
 			uart_enable <= 1'b0;
 			uartOp_o <= `MEM_NOP;
 			uart_storeData_o <= 32'b0;

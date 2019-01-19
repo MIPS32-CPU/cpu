@@ -150,6 +150,22 @@ module MEM(
 			&& (status[1] == 1'b0) 
 			&& (status[0] == 1'b1)) begin
 				exceptionType_o <= 32'h00000001;
+			end else if((status[15] & cause[15] == 1'b1) 
+				&& (status[1] == 1'b0) 
+				&& (status[0] == 1'b1)) begin
+					exceptionType_o <= 32'h10;
+			end else if((status[14] & cause[14] == 1'b1) 
+				&& (status[1] == 1'b0) 
+				&& (status[0] == 1'b1)) begin
+					exceptionType_o <= 32'h11;
+			end else if((status[13] & cause[13] == 1'b1) 
+				&& (status[1] == 1'b0) 
+				&& (status[0] == 1'b1)) begin
+					exceptionType_o <= 32'h12;	
+			end else if((status[11] & cause[11] == 1'b1) 
+				&& (status[1] == 1'b0) 
+				&& (status[0] == 1'b1)) begin
+					exceptionType_o <= 32'h13;	
 			end else if(addressError == 1'b1) begin
 				if(ramOp_i == `MEM_LW ||  ramOp_i == `MEM_LH ||
 				   ramOp_i == `MEM_LHU) begin

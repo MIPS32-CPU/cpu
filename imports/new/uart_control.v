@@ -28,40 +28,6 @@ module uart_control(
 	assign dataReady = ext_uart_ready;
 	assign writeReady = ~ext_uart_busy;
 
-	/*always @(posedge clk) begin
-		pauseRequest <= 1'b0;
-		ext_uart_start <= 1'b0;
-		ext_uart_clear <= 1'b0;
-		loadData_o <= 32'b0;
-		if(uartOp_i == `MEM_SB || uartOp_i == `MEM_LB) begin
-			if(uartOp_i == `MEM_SB) begin
-				if(~ext_uart_busy) begin
-					if(~pauseRequest) begin
-						ext_uart_tx <= storeData[7:0];
-						ext_uart_start <= 1'b1;
-						pauseRequest <= 1'b1;
-					end
-				end else begin
-					ext_uart_start <= 1'b0;
-					pauseRequest <= 1'b0;
-				end
-			end else begin
-				if(ext_uart_ready) begin
-					loadData_o <= {24'b0, 8'h31};
-					ext_uart_clear <= 1'b1;
-					pauseRequest <= 1'b0;
-				end else begin
-					pauseRequest <= 1'b1;
-				end
-			end
-		
-		end else begin
-			pauseRequest <= 1'b0;
-			ext_uart_start <= 1'b0;
-			ext_uart_clear <= 1'b0;
-			loadData_o <= 32'h0;
-		end
-	end*/
 	always @(posedge clk) begin
 		if(rst == 1'b1) begin
 			state <= IDLE;

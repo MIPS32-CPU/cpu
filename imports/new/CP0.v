@@ -219,6 +219,54 @@ module CP0(
 			32'he: begin					//eret
 				status_o[1] <= 1'b0; //EXL bit
 			end
+			
+			32'h10: begin					//interruption
+				if(in_delay_slot_i == 1'b1) begin
+					epc_o <= exceptionAddr_i - 4;
+					cause_o[31] <= 1'b1; //cause register BD(branch delay) bit
+				end else begin 
+					epc_o <= exceptionAddr_i;
+					cause_o[31] <= 1'b0;
+				end 
+				status_o[1] <= 1'b1; //EXL bit
+				cause_o[6:2] <= 5'd13;//ExcCode bits
+			end
+	
+			32'h11: begin					//interruption
+				if(in_delay_slot_i == 1'b1) begin
+					epc_o <= exceptionAddr_i - 4;
+					cause_o[31] <= 1'b1; //cause register BD(branch delay) bit
+				end else begin 
+					epc_o <= exceptionAddr_i;
+					cause_o[31] <= 1'b0;
+				end 
+				status_o[1] <= 1'b1; //EXL bit
+				cause_o[6:2] <= 5'd14;//ExcCode bits
+			end
+	
+			32'h12: begin					//interruption
+				if(in_delay_slot_i == 1'b1) begin
+					epc_o <= exceptionAddr_i - 4;
+					cause_o[31] <= 1'b1; //cause register BD(branch delay) bit
+				end else begin 
+					epc_o <= exceptionAddr_i;
+					cause_o[31] <= 1'b0;
+				end 
+				status_o[1] <= 1'b1; //EXL bit
+				cause_o[6:2] <= 5'd15;//ExcCode bits
+			end
+	
+			32'h13: begin					//interruption
+				if(in_delay_slot_i == 1'b1) begin
+					epc_o <= exceptionAddr_i - 4;
+					cause_o[31] <= 1'b1; //cause register BD(branch delay) bit
+				end else begin 
+					epc_o <= exceptionAddr_i;
+					cause_o[31] <= 1'b0;
+				end 
+				status_o[1] <= 1'b1; //EXL bit
+				cause_o[6:2] <= 5'd16;//ExcCode bits
+			end
 
 			default: begin
 				//ebase_o <= 32'b0;

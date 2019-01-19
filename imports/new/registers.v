@@ -17,7 +17,7 @@ module registers(
 );
     reg[31:0] register[31:0];
     
-    assign led_o = register[6][7:0];
+    assign led_o = register[4][7:0];
     assign dpy0_o = register[19][3:0];
     assign dpy1_o = register[19][7:4];
     

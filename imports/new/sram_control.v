@@ -40,7 +40,7 @@ module sram_control (
 	
 	assign write = ((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
 	assign load = (write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
-	assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000);
+	assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000) || EX_ramAddr_i < 32'h00300000;
 	//assign base = 1'b0;
 	assign ext = ~base;
 	assign base_read = load && base;
