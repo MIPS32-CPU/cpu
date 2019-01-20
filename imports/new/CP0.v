@@ -37,7 +37,7 @@ module CP0(
 			cause_o <= 32'b0;
 			ebase_o <= 32'b0;
 			index_o <= {1'bx, 23'b0, 4'bx};
-			random_o <= {28'b0, 4'b1111};
+			random_o <= {28'b0, 4'b0};
 			entrylo0_o <= {1'b0, 31'bx};
 			entrylo1_o <= {1'b0, 31'bx};
 			context_o <= {28'bx, 4'b0};
@@ -49,7 +49,6 @@ module CP0(
 			cause_o[15:10] <= int_i;
 			
 			random_o[3:0] <= random_o[3:0] + 4'b1111;
-			
 			
 			if(writeEnable_i == 1'b1) begin
 				case(writeAddr_i)
@@ -284,7 +283,7 @@ module CP0(
 				end 
 			end
 			badVaddr_o <= badVaddr_i;
-			entryhi_o[31:13] <= badVaddr_i[31:13];
+			//entryhi_o[31:13] <= badVaddr_i[31:13];
 			status_o[1] <= 1'b1; //EXL bit
 			if(load_i == 1'b1) begin
 				cause_o[6:2] <= 5'b10;//ExcCode bits

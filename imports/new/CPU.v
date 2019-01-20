@@ -151,6 +151,7 @@ module CPU(
     wire [1:0] MEM_WB_writeHILO_o;
     wire MEM_WB_write_CP0_o;
     wire [4:0] MEM_WB_write_CP0_addr_o;
+    wire tlbwi,tlbwr;
     
     //control
     wire [5:0] ctr_stall_o;
@@ -497,7 +498,11 @@ module CPU(
 			.write_CP0_addr_i(MEM_write_CP0_addr_o),
 			.write_CP0_o(MEM_WB_write_CP0_o),
 			.write_CP0_addr_o(MEM_WB_write_CP0_addr_o),
-			.flush(ctr_flush_o)
+			.flush(ctr_flush_o),
+			.tlbwi(MEM_tlbwi_o),
+			.tlbwr(MEM_tlbwr_o),
+			.tlbwi_o(tlbwi),
+			.tlbwr_o(tlbwr)
 	    );
 	    
 	    
@@ -543,6 +548,14 @@ module CPU(
 	    		btn_int[3:0] <= 4'b0;
 	    	end
 	    end
+	    reg uart_int;
+	    always @(posedge clk) begin
+	    	if(rst == 1'b1) begin
+	    		uart_int <= 1'b0;
+	    	end else begin
+	    		uart_int <= uart_dataReady;
+	    	end
+	    end
 	    
 	    CP0 CP0_0(
 			.clk(clk),
@@ -551,7 +564,7 @@ module CPU(
 			.writeAddr_i(MEM_WB_write_CP0_addr_o),
 			.writeData_i(MEM_WB_LO_data_o),
 			.readAddr_i(ID_read_CP0_addr_o),
-			.int_i({btn_int[3:1], uart_dataReady, btn_int[0] ,1'b0}),
+			.int_i({btn_int[3:1], uart_int, btn_int[0] ,1'b0}),
 			.exceptionAddr_i(MEM_pc_o),
 			.exceptionType_i(MEM_exceptionType_o),
 			.in_delay_slot_i(MEM_in_delay_slot_o),
@@ -611,7 +624,7 @@ module CPU(
 	    	.EX_tlbmiss_i(MMU_EX_tlbmiss_o),
 	    	.data_io(data_io)
 	    );
-	    
+	
 	    MMU MMU0(
 	    	.clk(clk),
 	    	.rst(rst),
@@ -635,8 +648,8 @@ module CPU(
 	    	.entrylo0_i(MEM_CP0_entrylo0_o),
 	    	.entrylo1_i(MEM_CP0_entrylo1_o),
 	    	.entryhi_i(MEM_CP0_entryhi_o),
-	    	.tlbwi(MEM_tlbwi_o),
-	    	.tlbwr(MEM_tlbwr_o),
+	    	.tlbwi(tlbwi),
+	    	.tlbwr(tlbwr),
 	    	.tlbmiss(MMU_tlbmiss_o),
 	    	.load_o(MMU_load_o),
 	    	.EX_ramAddr_i(EX_LO_data_o),

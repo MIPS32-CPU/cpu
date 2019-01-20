@@ -10,6 +10,8 @@ module MEM_WB(
     input wire write_CP0_i,
     input wire [4:0] write_CP0_addr_i,
     input wire flush,
+    input wire tlbwi,
+    input wire tlbwr,
     
     output reg [4:0] writeAddr_o,
     output reg writeEnable_o,
@@ -17,7 +19,9 @@ module MEM_WB(
     output reg [31:0] HI_data_o,
     output reg write_CP0_o,
     output reg [4:0] write_CP0_addr_o,
-    output reg [31:0] LO_data_o
+    output reg [31:0] LO_data_o,
+    output reg tlbwi_o,
+    output reg tlbwr_o
 );
 
     always @ (posedge clk) begin
@@ -29,6 +33,8 @@ module MEM_WB(
             writeHILO_o <= 2'b00;
             write_CP0_o <= 1'b0;
             write_CP0_addr_o <= 5'b0;
+            tlbwi_o <= 1'b0;
+            tlbwr_o <= 1'b0;
         end else if(flush == 1'b1) begin
         	HI_data_o <= 32'b0;
 			LO_data_o <= 32'b0;
@@ -37,6 +43,8 @@ module MEM_WB(
 			writeHILO_o <= 2'b00;
 			write_CP0_o <= 1'b0;
 			write_CP0_addr_o <= 5'b0;
+			tlbwi_o <= 1'b0;
+			tlbwr_o <= 1'b0;
         end else if(stall[4] == 1'b1 && stall[5] == 1'b0) begin
         	HI_data_o <= 32'b0;
 			LO_data_o <= 32'b0;
@@ -45,6 +53,8 @@ module MEM_WB(
 			writeHILO_o <= 2'b00;
 			write_CP0_o <= 1'b0;
 			write_CP0_addr_o <= 5'b0;
+			tlbwi_o <= 1'b0;
+			tlbwr_o <= 1'b0;
         end else if(stall[4] == 1'b0) begin
             HI_data_o <= HI_data_i;
             LO_data_o <= LO_data_i;
@@ -53,6 +63,8 @@ module MEM_WB(
             writeHILO_o <= writeHILO_i;
             write_CP0_o <= write_CP0_i;
             write_CP0_addr_o <= write_CP0_addr_i;
+            tlbwi_o <= tlbwi;
+            tlbwr_o <= tlbwr;
         end
     end
 endmodule

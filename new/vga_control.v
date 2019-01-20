@@ -27,7 +27,7 @@ module vga_control(
     output wire [7:0] read_data
 );
 
-    reg[7:0] rom[8000:0];
+    reg[7:0] rom[80:0];
     
     assign read_data = (read_enable==1'b1 && rst==1'b0 && read_address<8000)?rom[read_address]:0;
     

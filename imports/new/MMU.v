@@ -287,7 +287,7 @@ module MMU(
 			vga_we <= 1'b0;
             vga_addr <= data_ramAddr_i[18:0];
             vga_data <= 8'b00000011;
-		end else if(data_ramAddr_i == 32'hBFD003F8) begin
+		end else if(data_ramAddr_i == 32'hBFD003F8 && (ramOp_i == `MEM_SB || ramOp_i == `MEM_LB)) begin
 			uart_enable <= 1'b1;
 			uartOp_o <= ramOp_i;
 			uart_storeData_o <= storeData_i;

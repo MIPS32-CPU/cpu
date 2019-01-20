@@ -53,14 +53,14 @@ module sram_control (
 		if(rst != 1'b1) begin
 			if((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) &&
 				addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:4] != 32'hBFD003F 
-				&& EX_ramAddr_i < 32'h90000000) begin
+				&& EX_ramAddr_i[31:4] != 32'hBFD0040 && EX_ramAddr_i < 32'h90000000) begin
 				write <= 1'b1;
 			end else begin
 				write <= 1'b0;
 			end
 			
 			if(write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 
-			&& EX_ramAddr_i[31:4] != 32'hBFD003F && EX_ramAddr_i < 32'h90000000)begin
+			&& EX_ramAddr_i[31:4] != 32'hBFD003F && EX_ramAddr_i < 32'h90000000 && EX_ramAddr_i[31:4] != 32'hBFD0040)begin
 				load <= 1'b1;
 			end else begin
 				load <= 1'b0;
