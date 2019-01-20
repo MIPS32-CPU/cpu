@@ -771,6 +771,8 @@ module CPU(
 	      .video_clk(video_clk),
 	      .video_de(video_de),
 	      
+	      .img_show(img_show),
+	      
 	      .vga_re(vga_re),
 	      .vga_addr(vga_addr),
 	      .vga_data(vga_data),
