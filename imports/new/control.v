@@ -35,7 +35,11 @@ module control(
 			if(exceptionType_i == 32'h0000000e) begin
 				exceptionHandleAddr_o <= CP0_epc_i;
 			end else begin
-				exceptionHandleAddr_o <= CP0_ebase_i + 32'h00000180;
+				if(exceptionHandleAddr_o <= 32'h80000000) begin
+					exceptionHandleAddr_o <= CP0_ebase_i + 32'h80000180;
+				end else begin
+					exceptionHandleAddr_o <= CP0_ebase_i + 32'h00000180;
+				end
 			end
 		end else if(stall_from_mem == 1'b1) begin
 			stall <= 6'b011111;	

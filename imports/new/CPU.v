@@ -6,9 +6,10 @@ In fact, one wire can link two ends.
 
 module CPU(
     input wire clk,
+    input wire clk_11M,
     input wire rst,
     input wire rxd,
-    input wire [3:0] btn,
+    input wire [3:0] btn, 
     
     output wire [19:0] instAddr_o,
 	output wire [19:0] dataAddr_o,
@@ -28,6 +29,27 @@ module CPU(
 	output wire [3:0] dpy1_o,
 	
 	output wire txd,
+	
+	// VGA
+	output wire[2:0] video_red,
+    output wire[2:0] video_green,
+    output wire[1:0] video_blue,
+    output wire video_hsync,
+    output wire video_vsync,
+    output wire video_clk,
+    output wire video_de,
+    
+    
+    // flash
+    output wire [22:0] flash_a,
+    inout wire [15:0] flash_d,
+    output wire flash_rp_n,
+    output wire flash_vpen,
+    output wire flash_ce_n,
+    output wire flash_oe_n,
+    output wire flash_we_n,
+    output wire flash_byte_n,
+    
 	
 	inout wire [31:0] inst_io,
 	inout wire [31:0] data_io
@@ -164,17 +186,18 @@ module CPU(
     wire [3:0] MMU_uartOp_o;
     wire [31:0] MMU_uart_storeData_o;
     
+    
+    wire MMU_vga_we;
+    wire [18:0] MMU_vga_addr;
+    wire [7:0] MMU_vga_data;
+    
     //uart control
 	wire [31:0] uart_loadData_o;
 	wire uart_pause_o;
 	wire [31:0] uart_data_o;
 	wire uart_txd, uart_dataReady, uart_writeReady;
 	assign txd = uart_txd;
-	/*assign led_o[15] = uart_dataReady;
-    assign led_o[14] = rxd;
-    assign led_o[13] = txd;
-    assign led_o[12] = uart_writeReady;*/
-    assign led_o[15:8] = uart_loadData_o[7:0];
+	
     wire mem_pause_o;
     assign mem_pause_o = uart_pause_o || sram_pause_o;	
     
@@ -505,22 +528,22 @@ module CPU(
 	    );
 	    
 	    reg [3:0] btn_int;
-		reg [3:0] pre_int;
-		always@(posedge clk) begin
-			if(rst == 1'b1) begin
-				btn_int[3:0] <= 4'b0;
-				pre_int[3:0] <= 4'b0;
-			end else if(btn[3:0] == 4'b0) begin
-				btn_int[3:0] <= 4'b0;
-				pre_int[3:0] <= 4'b0;
-			end else if(pre_int[3:0] == 4'b0) begin
-				btn_int[3:0] <= btn[3:0];
-				pre_int[3:0] <= btn[3:0];
-			end else begin
-				btn_int[3:0] <= 4'b0;
-			end
-		end
-		
+	    reg [3:0] pre_int;
+	    always@(posedge clk) begin
+	    	if(rst == 1'b1) begin
+	    		btn_int[3:0] <= 4'b0;
+	    		pre_int[3:0] <= 4'b0;
+	    	end else if(btn[3:0] == 4'b0) begin
+	    		btn_int[3:0] <= 4'b0;
+	    		pre_int[3:0] <= 4'b0;
+	    	end else if(pre_int[3:0] == 4'b0) begin
+	    		btn_int[3:0] <= btn[3:0];
+	    		pre_int[3:0] <= btn[3:0];
+	    	end else begin
+	    		btn_int[3:0] <= 4'b0;
+	    	end
+	    end
+	    
 	    CP0 CP0_0(
 			.clk(clk),
 			.rst(rst),
@@ -528,7 +551,7 @@ module CPU(
 			.writeAddr_i(MEM_WB_write_CP0_addr_o),
 			.writeData_i(MEM_WB_LO_data_o),
 			.readAddr_i(ID_read_CP0_addr_o),
-			.int_i({btn_int[3:1], uart_dataReady, btn_int[0], 1'b0}),
+			.int_i({btn_int[3:1], uart_dataReady, btn_int[0] ,1'b0}),
 			.exceptionAddr_i(MEM_pc_o),
 			.exceptionType_i(MEM_exceptionType_o),
 			.in_delay_slot_i(MEM_in_delay_slot_o),
@@ -622,25 +645,123 @@ module CPU(
 	    	.uartOp_o(MMU_uartOp_o),
 	    	.uart_storeData_o(MMU_uart_storeData_o),
 	    	.dataReady(uart_dataReady),
-	    	.writeReady(uart_writeReady)
+	    	.writeReady(uart_writeReady),
+	    	
+	    	.vga_we(MMU_vga_we),
+	    	.vga_addr(MMU_vga_addr),
+	    	.vga_data(MMU_vga_data)
 	    );
 	    
-		  uart_control uart_control0(
-				.clk(clk),
-				.rst(rst),
-				.rxd(rxd),
-				.storeData(MMU_uart_storeData_o),
-				.EX_uartOp_i(EX_ramOp_o),
-				.EX_addr_i(EX_LO_data_o),
-				.uartOp_i(MMU_uartOp_o),
-				
-				.txd(uart_txd),
-				.loadData_o(uart_loadData_o),
-				.dataReady(uart_dataReady),
-				.pauseRequest(uart_pause_o),
-				.writeReady(uart_writeReady)
-		  );
+	  uart_control uart_control0(
+	  		.clk(clk),
+	  		.rst(rst),
+	  		.rxd(rxd),
+	  		.storeData(MMU_uart_storeData_o),
+	  		.EX_uartOp_i(EX_ramOp_o),
+	  		.EX_addr_i(EX_LO_data_o),
+	  		.uartOp_i(MMU_uartOp_o),
+	  		
+	  		.txd(uart_txd),
+	  		.loadData_o(uart_loadData_o),
+	  		.dataReady(uart_dataReady),
+	  		.pauseRequest(uart_pause_o),
+	  		.writeReady(uart_writeReady)
+	  );
+	  
+	  wire vga_re;
+	  wire [22:0] vga_addr;
+	  wire [15:0] vga_data;
+	  wire vga_success;
+	  
+	  /*flash_control flash(
+	       .clk(clk),
+	       .rst(rst),
+	       
+	       .vga_re(vga_re),
+	       .vga_addr(vga_addr),
+	       .vga_data(vga_data),
+	       .vga_success(vga_success),
+	       
+	       .flash_a(flash_a),
+	       .flash_d(flash_d),
+	       .flash_rp_n(flash_rp_n),
+	       .flash_vpen(flash_vpen),
+	       .flash_ce_n(flash_ce_n),
+	       .flash_oe_n(flash_oe_n),
+	       .flash_we_n(flash_we_n),
+	       .flash_byte_n(flash_byte_n)
+	  );*/
+	  
+	  reg clk_10M;
+	  reg[3:0] temp;
+	  
+	  always @(posedge clk) begin
+	       if (rst == 1'b1) begin
+	           temp <= 4'b0;
+	       end
+	       else begin
+               if (temp == 2) begin
+                   temp <= 0;
+               end
+               else begin
+                   temp <= temp+1;
+               end
+           end
+	  end
+	  
+	  always @(posedge clk) begin
+	       if (rst == 1'b1) begin
+	           clk_10M <= 1'b0;
+	       end
+	       else begin
+                if (temp == 0) begin
+                    clk_10M <= ~clk_10M;
+                end
+                else begin
+                    clk_10M <= clk_10M;
+                end
+	       end
+	  end
+	  
+	  flash0 flash(
+	       .clk(clk_10M),
+	       .reset(rst),
+	       
+	       .addr(vga_addr),
+	       .ctl_read(vga_re),
+	       .data_out(vga_data),
+	       .success(vga_success),
+	       
+	       .flash_addr(flash_a),
+          .flash_data(flash_d),
+          .flash_rp(flash_rp_n),
+          .flash_vpen(flash_vpen),
+          .flash_ce(flash_ce_n),
+          .flash_oe(flash_oe_n),
+          .flash_we(flash_we_n),
+          .flash_byte(flash_byte_n)
+	  );
+	  
+	  vga_control vga(
+	      .clk(clk),
+	      .rst(rst),
+	      
+	      .video_red(video_red),
+	      .video_green(video_green),
+	      .video_blue(video_blue),
+	      .video_hsync(video_hsync),
+	      .video_vsync(video_vsync),
+	      .video_clk(video_clk),
+	      .video_de(video_de),
+	      
+	      .vga_re(vga_re),
+	      .vga_addr(vga_addr),
+	      .vga_data(vga_data),
+	      .vga_success(vga_success),
+	      
+	      .write_enable(MMU_vga_we),
+	      .write_address(MMU_vga_addr),
+	      .write_data(MMU_vga_data)
+	  );
+	  
 endmodule
-    
-    
-    

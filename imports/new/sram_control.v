@@ -28,7 +28,7 @@ module sram_control (
 );
 	
 
-	wire write, load;
+	reg write, load;
 	wire base_read, base_write, ext_read, ext_write;
 	wire base, ext;
 	wire addressError;
@@ -38,9 +38,10 @@ module sram_control (
 						  (EX_ramOp_i == `MEM_SW) && (EX_ramAddr_i[1:0] != 2'b0) ||
 						  (EX_ramOp_i == `MEM_SH) && (EX_ramAddr_i[0] != 1'b0);
 	
-	assign write = ((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
-	assign load = (write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:8] != 32'hBFD003F) ? 1'b1 : 1'b0;
-	assign base = (EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000) || EX_ramAddr_i < 32'h00300000;
+	//assign write = ((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:4] != 32'hBFD003F && EX_ramAddr_i < 32'h90000000) ? 1'b1 : 1'b0;
+	//assign load = (write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:4] != 32'hBFD003F && EX_ramAddr_i < 32'h90000000) ? 1'b1 : 1'b0;
+	
+	assign base = ((EX_ramAddr_i < 32'h80400000) && (EX_ramAddr_i >= 32'h80000000)) || (EX_ramAddr_i < 32'h00300000);
 	//assign base = 1'b0;
 	assign ext = ~base;
 	assign base_read = load && base;
@@ -48,6 +49,24 @@ module sram_control (
 	assign ext_read = load && ext;
 	assign ext_write = write && ext;
 	
+	always @(*) begin
+		if(rst != 1'b1) begin
+			if((EX_ramOp_i == `MEM_SW || EX_ramOp_i == `MEM_SH || EX_ramOp_i == `MEM_SB) &&
+				addressError == 1'b0 && EX_tlbmiss_i == 1'b0 && EX_ramAddr_i[31:4] != 32'hBFD003F 
+				&& EX_ramAddr_i < 32'h90000000) begin
+				write <= 1'b1;
+			end else begin
+				write <= 1'b0;
+			end
+			
+			if(write == 0 && EX_ramOp_i != `MEM_NOP && addressError == 1'b0 && EX_tlbmiss_i == 1'b0 
+			&& EX_ramAddr_i[31:4] != 32'hBFD003F && EX_ramAddr_i < 32'h90000000)begin
+				load <= 1'b1;
+			end else begin
+				load <= 1'b0;
+			end
+		end
+	end
 	
 	reg [2:0] state, nstate, pstate;	
 	reg [31:0] loadData_reg;

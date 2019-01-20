@@ -147,9 +147,9 @@ module MEM(
 			exceptionType_o <= 32'b0;
 		end else begin
 			if((status[12] & cause[12] == 1'b1) 
-			&& (status[1] == 1'b0) 
-			&& (status[0] == 1'b1)) begin
-				exceptionType_o <= 32'h00000001;
+				&& (status[1] == 1'b0) 
+				&& (status[0] == 1'b1)) begin
+					exceptionType_o <= 32'h1;
 			end else if((status[15] & cause[15] == 1'b1) 
 				&& (status[1] == 1'b0) 
 				&& (status[0] == 1'b1)) begin
@@ -165,7 +165,7 @@ module MEM(
 			end else if((status[11] & cause[11] == 1'b1) 
 				&& (status[1] == 1'b0) 
 				&& (status[0] == 1'b1)) begin
-					exceptionType_o <= 32'h13;	
+					exceptionType_o <= 32'h13;						
 			end else if(addressError == 1'b1) begin
 				if(ramOp_i == `MEM_LW ||  ramOp_i == `MEM_LH ||
 				   ramOp_i == `MEM_LHU) begin
